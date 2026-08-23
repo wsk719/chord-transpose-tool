@@ -77,6 +77,7 @@ console.log('— 觸控裝置（390×844，模擬 iPhone）—');
   ok(d.body.classList.contains('touch'), 'body 應加上 .touch');
   ok(w.eval('editMode') === false, '觸控裝置預設為瀏覽模式');
   ok(d.getElementById('fbMode').textContent === '✋', '浮動按鈕應顯示 ✋');
+  ok(d.getElementById('fbMode').getAttribute('aria-pressed') === 'false', '瀏覽模式按鈕應回報 aria-pressed=false');
   ok(/瀏覽模式/.test(d.getElementById('modeTip').textContent), 'modeTip 應說明瀏覽模式');
   ok(wrap.classList.contains('viewmode'), 'canvasWrap 應有 .viewmode');
 
@@ -129,6 +130,7 @@ console.log('— 觸控裝置（390×844，模擬 iPhone）—');
   w.eval('setEditMode(true)');
   ok(w.eval('editMode') === true, 'setEditMode(true) 應生效');
   ok(d.getElementById('fbMode').textContent === '✏️', '編輯模式按鈕應顯示 ✏️');
+  ok(d.getElementById('fbMode').getAttribute('aria-pressed') === 'true', '編輯模式按鈕應回報 aria-pressed=true');
   ok(!wrap.classList.contains('viewmode'), '編輯模式應移除 .viewmode');
   canvas.onpointerdown(PD(1, 100, 200));
   ok(w.eval("gest") === null, '編輯模式單指不應進入 pan');
@@ -200,6 +202,23 @@ console.log('— 桌機（滑鼠，1440×900）行為不變 —');
 }
 
 // ============================================================
+console.log('— 頁籤語意與鍵盤操作 —');
+{
+  const { w, d } = bootAndRun({ coarse: false, vw: 1024, vh: 768 });
+  const imgTab = d.getElementById('tab-img'), txtTab = d.getElementById('tab-txt');
+  ok(imgTab.tagName === 'BUTTON' && txtTab.tagName === 'BUTTON', '模式頁籤應使用原生 button');
+  ok(imgTab.getAttribute('role') === 'tab' && imgTab.getAttribute('aria-selected') === 'true', '圖片頁籤應有正確初始語意');
+  txtTab.click();
+  ok(txtTab.getAttribute('aria-selected') === 'true' && txtTab.tabIndex === 0, '點文字頁籤後應更新選取與 tabIndex');
+  ok(d.getElementById('panel-txt').getAttribute('aria-hidden') === 'false' && d.getElementById('panel-img').getAttribute('aria-hidden') === 'true',
+     '切換頁籤應同步 tabpanel 的 aria-hidden');
+  txtTab.dispatchEvent(new w.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+  ok(imgTab.getAttribute('aria-selected') === 'true' && d.activeElement === imgTab, '方向鍵應切換並聚焦相鄰頁籤');
+  const drop = d.getElementById('drop');
+  ok(drop.getAttribute('role') === 'button' && drop.tabIndex === 0, '上傳區應可用鍵盤聚焦');
+}
+
+// ============================================================
 console.log('— CSS 檢查 —');
 {
   ok(/@media\(max-width:768px\)/.test(html), '應有 768px 斷點');
@@ -208,7 +227,13 @@ console.log('— CSS 檢查 —');
      '手機表單控制項應 ≥16px（避免 iOS 聚焦自動放大）');
   ok(/\.btn,button\{min-height:44px\}/.test(mq), '手機按鈕最小高度 44px');
   ok(/\.controls\{display:grid/.test(mq), '手機控制列應改為網格');
-  ok(/#floatBar \.fb\{width:44px;height:44px/.test(html), '浮動按鈕應為 44×44');
+  const fb = /#floatBar \.fb\{width:(\d+)px;height:(\d+)px/.exec(html);
+  ok(fb && Number(fb[1]) >= 44 && Number(fb[2]) >= 44, '浮動按鈕至少應為 44×44');
+  ok(/@media\(any-pointer:coarse\)/.test(html), '應針對粗略指標裝置放大觸控目標');
+  ok(/#floatBar \.fb\{width:48px;height:48px;min-height:48px\}/.test(html), '觸控裝置浮動按鈕應為 48×48');
+  ok(/env\(safe-area-inset-bottom\)/.test(html), '應避開手機底部安全區');
+  ok(/button,\.tab,\.drop\{touch-action:manipulation\}/.test(html), '一般互動元件應使用 manipulation 觸控策略');
+  ok(/prefers-reduced-motion:reduce/.test(html), '應尊重減少動態效果偏好');
   ok(!/style="display:none"/.test(html.split('<script>')[0]), '版面切換應改用 class 而非 inline display');
 }
 

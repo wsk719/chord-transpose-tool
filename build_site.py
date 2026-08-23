@@ -55,19 +55,12 @@ REPLACEMENTS = [
      "      workerPath:VENDOR+'worker.min.js', corePath:VENDOR, langPath:VENDOR,\n"
      "      logger:m=>{"),
 
-    # 3. 隱私與版權說明
-    ('  <span class="sub">圖片和弦譜 OCR 辨識標註轉調・文字譜轉調</span>\n</header>',
-     '  <span class="sub">圖片和弦譜 OCR 辨識標註轉調・文字譜轉調</span>\n'
+    # 3. 部署版補上簡潔的隱私與使用權提醒
+    ('</header>',
      '</header>\n\n'
-     '<p class="notice">🔒 所有辨識與轉調都在<b>您自己的瀏覽器</b>中完成，'
-     '譜面檔案不會上傳到任何伺服器，本站也沒有後端可以儲存它們。<br>'
-     '⚠️ 請自行確認您對所處理的譜面擁有合法使用權；本工具不提供、不散布任何譜面內容。</p>'),
+     '<p class="notice">🔒 譜面只在你的裝置中處理，不上傳、不保存。'
+     '請確認你擁有譜面的合法使用權。</p>'),
 ]
-
-NOTICE_CSS = """  .notice{max-width:1100px;margin:0 auto 14px;padding:10px 14px;font-size:13px;line-height:1.7;
-    color:var(--sub);background:#eef4ff;border:1px solid #d3e0f8;border-radius:10px}
-  @media(max-width:768px){.notice{margin:0 8px 12px;padding:9px 11px;font-size:12px;line-height:1.6}}
-</style>"""
 
 
 def build() -> None:
@@ -79,10 +72,6 @@ def build() -> None:
         if html.count(old) != 1:
             sys.exit(f"替換失敗（命中 {html.count(old)} 次，需正好 1 次）：{old[:60]}…")
         html = html.replace(old, new)
-
-    if html.count("</style>") != 1:
-        sys.exit("找不到唯一的 </style>，無法插入 .notice 樣式")
-    html = html.replace("</style>", NOTICE_CSS)
 
     # 產出後不該再有任何外部 http(s) 資源
     external = re.findall(r'(?:src|href)="(https?://[^"]+)"', html)
@@ -98,7 +87,7 @@ def build() -> None:
         sys.exit("docs/vendor 缺少檔案：" + ", ".join(missing) + "\n（見 README 的「更新自帶函式庫」）")
 
     total = sum(p.stat().st_size for p in (OUT_DIR / "vendor").iterdir())
-    print(f"✅ 產生 {OUT.relative_to(ROOT)}（{OUT.stat().st_size/1024:.0f} KB）"
+    print(f"[OK] 產生 {OUT.relative_to(ROOT)}（{OUT.stat().st_size/1024:.0f} KB）"
           f"，vendor {total/1024/1024:.1f} MB / {len(VENDOR_FILES)} 個檔案")
 
 

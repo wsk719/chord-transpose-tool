@@ -13,188 +13,369 @@
 </script>
 <style>
   :root{
-    --bg:#f5f6f8; --card:#fff; --ink:#1c2430; --sub:#66707d;
-    --accent:#2f6fed; --accent2:#e8f0fe; --line:#dde2e9; --red:#d3273e;
+    --bg:#f3f5f9; --card:#fff; --card-soft:#f8f9fd; --ink:#172033; --sub:#687188;
+    --accent:#5654d4; --accent-strong:#4140ad; --accent2:#eeefff; --line:#dfe3ec;
+    --line-strong:#cbd1df; --red:#d23c58; --mint-soft:#e8f7f3;
+    --shadow:0 22px 54px rgba(37,42,71,.09),0 3px 10px rgba(37,42,71,.04);
+    --radius:22px;
   }
   *{box-sizing:border-box}
-  body{margin:0;font-family:"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;background:var(--bg);color:var(--ink)}
-  header{background:var(--card);border-bottom:1px solid var(--line);padding:14px 22px;display:flex;align-items:center;gap:14px}
-  header h1{font-size:19px;margin:0}
-  header .sub{color:var(--sub);font-size:13px}
-  .tabs{display:flex;gap:6px;margin:16px 22px 0}
-  .tab{padding:9px 20px;border:1px solid var(--line);border-bottom:none;border-radius:10px 10px 0 0;background:#eceff3;cursor:pointer;font-size:15px;color:var(--sub)}
-  .tab.active{background:var(--card);color:var(--ink);font-weight:600}
-  .panel{display:none;background:var(--card);border:1px solid var(--line);border-radius:0 12px 12px 12px;margin:0 22px 26px;padding:20px}
+  html{min-width:320px;background:var(--bg);scroll-behavior:smooth}
+  body{min-height:100vh;min-height:100svh;margin:0;font-family:Inter,"Segoe UI","Microsoft JhengHei",system-ui,sans-serif;
+    background:
+      radial-gradient(circle at 12% -10%,rgba(86,84,212,.14),transparent 34rem),
+      radial-gradient(circle at 95% 10%,rgba(22,134,120,.09),transparent 28rem),var(--bg);
+    color:var(--ink);line-height:1.5;-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font:inherit}
+  button,.tab,.drop,select,input{-webkit-tap-highlight-color:transparent}
+  button,.tab,.drop{touch-action:manipulation}
+  .site-header{background:rgba(255,255,255,.88);border-bottom:1px solid rgba(203,209,223,.8);backdrop-filter:blur(18px)}
+  .header-inner{max-width:1200px;min-height:82px;margin:0 auto;padding:14px 24px;display:flex;align-items:center;gap:14px}
+  .brand-mark{width:46px;height:46px;display:grid;place-items:center;flex:0 0 auto;border-radius:15px;
+    color:#fff;font-size:24px;font-weight:800;background:linear-gradient(145deg,#6b68e6,#4845bd);box-shadow:0 10px 24px rgba(86,84,212,.28)}
+  .brand-copy{min-width:0}
+  .brand-copy h1{font-size:21px;line-height:1.25;letter-spacing:.02em;margin:0}
+  .brand-copy .sub{display:block;color:var(--sub);font-size:13px;margin-top:3px}
+  .privacy-pill{margin-left:auto;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;padding:8px 12px;
+    border:1px solid #c8e8e0;border-radius:999px;background:var(--mint-soft);color:#116e63;font-size:12px;font-weight:700}
+  .privacy-pill::before{content:"";width:7px;height:7px;border-radius:50%;background:#1ba391;box-shadow:0 0 0 4px rgba(27,163,145,.12)}
+  .notice{width:calc(100% - 48px);max-width:1152px;margin:14px auto 0;padding:10px 14px;display:flex;align-items:center;gap:8px;
+    color:#555f75;background:rgba(255,255,255,.72);border:1px solid var(--line);border-radius:14px;font-size:13px;box-shadow:0 4px 16px rgba(37,42,71,.04)}
+  .app-shell{max-width:1200px;margin:18px auto 0;padding:0 24px 34px}
+  .tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;width:min(520px,100%);padding:6px;margin:0 0 14px;
+    border:1px solid rgba(203,209,223,.85);border-radius:18px;background:rgba(255,255,255,.72);box-shadow:0 8px 24px rgba(37,42,71,.05)}
+  .tab{min-height:56px;padding:8px 14px;display:flex;align-items:center;justify-content:center;gap:10px;border:0;border-radius:13px;
+    background:transparent;color:var(--sub);cursor:pointer;text-align:left;transition:background .18s ease,color .18s ease,box-shadow .18s ease,transform .12s ease}
+  .tab-icon{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:16px}
+  .tab-copy{display:flex;flex-direction:column;line-height:1.2}
+  .tab-copy b{font-size:15px;color:inherit}
+  .tab-copy small{font-size:11px;color:var(--sub);margin-top:3px}
+  .tab.active{background:var(--card);color:var(--ink);box-shadow:0 5px 16px rgba(37,42,71,.1)}
+  .tab.active .tab-icon{color:var(--accent);border-color:#d7d8fa;background:var(--accent2)}
+  .panel{display:none;background:rgba(255,255,255,.94);border:1px solid rgba(203,209,223,.9);border-radius:var(--radius);margin:0;padding:26px;box-shadow:var(--shadow)}
   .panel.active{display:block}
-  .controls{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end;background:var(--accent2);border:1px solid #c9dbfa;border-radius:10px;padding:12px 16px;margin-bottom:16px}
-  .ctl{display:flex;flex-direction:column;gap:4px}
-  .ctl label{font-size:12px;color:var(--sub)}
-  select,button,input[type=color]{font-size:15px;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
-  select:focus{outline:2px solid var(--accent)}
-  .stepper{display:flex;align-items:center;gap:6px}
-  .stepper button{width:38px;font-weight:700;cursor:pointer}
-  .stepper .semi{min-width:52px;text-align:center;font-weight:700;font-size:16px}
-  .btn{cursor:pointer}
-  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
-  .btn.primary:disabled{opacity:.5;cursor:default}
-  .drop{border:2px dashed #b9c3d0;border-radius:12px;padding:34px;text-align:center;color:var(--sub);cursor:pointer;transition:.15s}
-  .drop.over{border-color:var(--accent);background:var(--accent2)}
+  .panel-intro{display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:20px}
+  .panel-kicker{margin:0 0 5px;color:var(--accent);font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+  .panel-intro h2{margin:0;font-size:clamp(24px,3vw,32px);line-height:1.2;letter-spacing:-.02em}
+  .panel-intro .lede{max-width:540px;margin:8px 0 0;color:var(--sub);font-size:14px}
+  .intro-badge{flex:0 0 auto;padding:8px 12px;border:1px solid #c8e8e0;border-radius:999px;background:var(--mint-soft);color:#116e63;font-size:12px;font-weight:700}
+  .controls{display:grid;gap:12px;padding:12px;margin:18px 0;background:#f3f4fb;border:1px solid #e0e2f2;border-radius:18px}
+  .image-controls{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr) minmax(180px,.52fr);align-items:stretch}
+  .text-controls{display:block}
+  .control-group{min-width:0;padding:14px;border:1px solid rgba(223,227,236,.95);border-radius:14px;background:rgba(255,255,255,.88)}
+  .group-title{display:flex;align-items:center;gap:7px;margin-bottom:10px;color:#555f75;font-size:12px;font-weight:800;letter-spacing:.05em}
+  .group-title::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+  .control-grid{display:grid;align-items:end;gap:10px}
+  .image-key-grid{grid-template-columns:minmax(84px,1fr) minmax(84px,1fr) minmax(156px,1.35fr) minmax(98px,1fr)}
+  .text-key-grid{grid-template-columns:minmax(100px,1fr) minmax(100px,1fr) minmax(165px,1.25fr) minmax(120px,1fr)}
+  .appearance-grid{grid-template-columns:minmax(130px,1fr) 74px minmax(140px,1.3fr)}
+  .ctl{min-width:0;display:flex;flex-direction:column;gap:6px}
+  .ctl label{color:var(--sub);font-size:12px;font-weight:700}
+  select,.btn,.stepper button,input[type=color]{min-height:44px;font-size:14px;padding:9px 11px;border:1px solid var(--line-strong);border-radius:11px;background:#fff;color:var(--ink)}
+  select{width:100%;cursor:pointer}
+  select:focus-visible,.btn:focus-visible,.stepper button:focus-visible,.tab:focus-visible,.drop:focus-visible,
+  textarea:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid rgba(86,84,212,.28);outline-offset:2px;border-color:var(--accent)}
+  .stepper{display:grid;grid-template-columns:44px minmax(42px,1fr) 44px;align-items:center;gap:5px}
+  .stepper button{padding:0;font-size:20px;font-weight:750;cursor:pointer}
+  .stepper .semi{min-width:0;text-align:center;font-weight:800;font-size:16px;font-variant-numeric:tabular-nums}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;font-weight:700;transition:background .16s ease,border-color .16s ease,color .16s ease,transform .1s ease,box-shadow .16s ease}
+  .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 8px 18px rgba(86,84,212,.2)}
+  .btn:active,.stepper button:active,.tab:active{transform:scale(.975)}
+  .btn.primary:disabled{opacity:.5;cursor:default;box-shadow:none}
+  .control-actions{display:grid;grid-template-rows:1fr 1fr;gap:9px}
+  .control-actions .btn{min-height:58px;padding:10px 14px;justify-content:flex-start;text-align:left}
+  .btn-glyph{width:32px;height:32px;display:grid;place-items:center;flex:0 0 auto;border-radius:10px;background:rgba(255,255,255,.18);font-size:17px}
+  .btn-label{display:flex;flex-direction:column;line-height:1.15}
+  .btn-label small{margin-top:4px;color:rgba(255,255,255,.72);font-size:10px;font-weight:600;letter-spacing:.04em}
+  input[type=color]{width:100%;padding:4px;cursor:pointer}
+  input[type=range]{width:100%;height:28px;margin:0;accent-color:var(--accent);cursor:pointer}
+  .drop{position:relative;min-height:210px;padding:30px 24px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    overflow:hidden;border:1.5px dashed #aaaee0;border-radius:18px;text-align:center;color:var(--sub);cursor:pointer;
+    background:linear-gradient(145deg,rgba(247,247,255,.96),rgba(239,247,246,.74));transition:border-color .18s ease,background .18s ease,transform .18s ease,box-shadow .18s ease}
+  .drop::before{content:"";position:absolute;inset:-40% auto auto -5%;width:240px;height:240px;border-radius:50%;background:rgba(86,84,212,.06);pointer-events:none}
+  .drop.over{border-color:var(--accent);background:var(--accent2);box-shadow:0 0 0 4px rgba(86,84,212,.1)}
   .drop input{display:none}
-  .hint{font-size:13px;color:var(--sub);margin-top:8px}
-  #progressWrap{display:none;margin:14px 0}
-  #progressBar{height:8px;background:#e2e7ee;border-radius:4px;overflow:hidden}
-  #progressBar>div{height:100%;width:0;background:var(--accent);transition:width .2s}
-  #progressText{font-size:13px;color:var(--sub);margin-top:4px}
+  .drop-icon{position:relative;width:54px;height:54px;display:grid;place-items:center;margin-bottom:13px;border-radius:17px;
+    color:var(--accent);background:#fff;border:1px solid #dedff8;box-shadow:0 8px 20px rgba(86,84,212,.13)}
+  .drop-icon svg{width:27px;height:27px}
+  .drop-title{position:relative;color:var(--ink);font-size:17px;font-weight:800}
+  .drop-copy{position:relative;margin-top:5px;font-size:14px}
+  .drop-copy b{color:var(--accent)}
+  .drop-badges{position:relative;display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin-top:14px}
+  .drop-badges span{padding:5px 9px;border:1px solid rgba(203,209,223,.9);border-radius:999px;background:rgba(255,255,255,.72);font-size:11px;font-weight:700}
+  .hint{position:relative;max-width:680px;font-size:12px;color:var(--sub);margin-top:10px}
+  .drop.compact{min-height:0;padding:13px 18px;flex-direction:row;justify-content:flex-start;gap:11px;text-align:left}
+  .drop.compact .drop-icon{width:40px;height:40px;margin:0;border-radius:12px}
+  .drop.compact .drop-icon svg{width:21px;height:21px}
+  .drop.compact .drop-title{font-size:14px}
+  .drop.compact .drop-copy{margin:0 0 0 auto;font-size:12px}
+  .drop.compact .drop-badges,.drop.compact .hint{display:none}
+  #progressWrap{display:none;margin:14px 0;padding:14px 16px;border:1px solid #dedff8;border-radius:14px;background:var(--accent2)}
+  #progressBar{height:8px;background:#d9dcf6;border-radius:999px;overflow:hidden}
+  #progressBar>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7775e8);border-radius:inherit;transition:width .2s}
+  #progressText{font-size:13px;color:#4e5380;margin-top:7px;font-weight:650}
   #canvasArea{position:relative}
-  #canvasWrap{overflow:auto;border:1px solid var(--line);border-radius:10px;margin-top:14px;max-height:75vh;display:none;background:#f4f6f9}
+  #canvasWrap{overflow:auto;border:1px solid var(--line);border-radius:18px;margin-top:14px;padding:10px;max-height:75vh;display:none;background:#eaedf3;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)}
   #imgCanvas{display:block;cursor:pointer;max-width:none;touch-action:none;margin:0 auto}
   #canvasWrap.viewmode #imgCanvas{cursor:grab}
+  #canvasWrap.viewmode #imgCanvas:active{cursor:grabbing}
   /* 觸控裝置：浮在譜面右下角的工具列（模式切換＋縮放），滑鼠裝置不顯示 */
-  #floatBar{display:none;position:absolute;right:12px;bottom:12px;z-index:6;gap:6px;
-    background:rgba(255,255,255,.94);border:1px solid var(--line);border-radius:999px;
-    padding:5px;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+  #floatBar{display:none;position:absolute;right:max(16px,env(safe-area-inset-right));bottom:max(16px,env(safe-area-inset-bottom));z-index:6;gap:6px;
+    background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:999px;padding:6px;box-shadow:0 10px 30px rgba(26,31,55,.22);backdrop-filter:blur(14px)}
   #floatBar.on{display:flex}
-  #floatBar .fb{width:44px;height:44px;padding:0;border-radius:999px;font-size:18px;line-height:1;
+  #floatBar .fb{width:46px;height:46px;min-height:46px;padding:0;border-radius:999px;font-size:18px;line-height:1;
     display:flex;align-items:center;justify-content:center;cursor:pointer}
-  #floatBar .fb.act{background:var(--accent);color:#fff;border-color:var(--accent)}
-  #modeTip{display:none;font-size:13px;color:var(--sub);margin-top:8px;line-height:1.6}
+  #floatBar .fb.act{background:var(--accent);color:#fff;border-color:var(--accent);box-shadow:0 6px 16px rgba(86,84,212,.24)}
+  #modeTip{display:none;font-size:13px;color:#4e5870;margin-top:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card-soft);line-height:1.55}
   body.touch #modeTip{display:block}
-  #zoomBar{display:none;align-items:center;flex-wrap:wrap;gap:6px;margin-top:12px}
-  #zoomBar .btn{padding:5px 10px;font-size:13px}
-  #zoomVal{display:inline-block;min-width:52px;text-align:center;font-size:13px;color:var(--sub)}
+  #zoomBar{display:none;align-items:center;flex-wrap:wrap;gap:7px;width:max-content;max-width:100%;margin-top:12px;padding:7px;border:1px solid var(--line);border-radius:14px;background:var(--card-soft)}
+  #zoomBar .zoom-label{padding:0 7px;font-size:12px;color:var(--sub);font-weight:750}
+  #zoomBar .btn{padding:7px 11px;font-size:12px;min-height:36px}
+  #zoomVal{display:inline-block;min-width:50px;text-align:center;font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+  #zoomBar .mobile-break{display:none}
   #zoomBar .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
   #zoomBar .btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
-  .toolrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}
-  .chk{display:flex;align-items:center;gap:5px;font-size:14px;color:var(--sub)}
-  textarea{width:100%;min-height:260px;font-family:Consolas,"Courier New",monospace;font-size:15px;padding:12px;border:1px solid var(--line);border-radius:10px;resize:vertical;line-height:1.5}
+  .toolrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px;padding:10px 12px;border:1px solid var(--line);border-radius:14px;background:var(--card-soft)}
+  .chk{min-height:40px;display:flex;align-items:center;gap:8px;font-size:13px;color:#4e5870;font-weight:700;cursor:pointer}
+  .chk input{width:18px;height:18px;accent-color:var(--accent)}
+  .editor-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card-soft)}
+  textarea{width:100%;min-height:310px;font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:14px;padding:16px;border:1px solid var(--line-strong);border-radius:13px;resize:vertical;line-height:1.65;background:#fff;color:var(--ink)}
   .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
   @media(max-width:900px){.cols{grid-template-columns:1fr}}
-  .colhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .colhead{min-height:44px;display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:9px}
+  .coltitle{display:flex;align-items:center;gap:9px}
+  .coltitle-icon{width:30px;height:30px;display:grid;place-items:center;border-radius:9px;background:var(--accent2);color:var(--accent);font-size:14px}
   .colhead b{font-size:14px}
-  pre#textOut{font-family:Consolas,"Courier New",monospace;font-size:15px;background:#fbfcfe;border:1px solid var(--line);border-radius:10px;padding:12px;min-height:260px;margin:0;overflow:auto;line-height:1.5}
+  .col-actions{display:flex;gap:7px}
+  pre#textOut{font-family:"SFMono-Regular",Consolas,"Liberation Mono",monospace;font-size:14px;background:#fff;border:1px solid var(--line-strong);border-radius:13px;padding:16px;min-height:310px;margin:0;overflow:auto;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+  pre#textOut:empty::before{content:"轉調結果會即時出現在這裡";color:#9aa1b2;font-family:Inter,"Segoe UI","Microsoft JhengHei",system-ui,sans-serif}
   pre#textOut .ch{color:var(--red);font-weight:700}
-  #detInfo{font-size:13px;color:var(--sub);margin-top:8px;display:none}
+  #detInfo{font-size:13px;color:#7a5260;margin-top:10px;padding:10px 12px;border:1px solid #f0cfd8;border-radius:12px;background:#fff3f6;display:none}
   .hide{display:none!important}
   #pageNav{display:none;align-items:center;gap:8px}
-  details.help{font-size:13px;color:var(--sub);width:100%}
-  details.help>summary{cursor:pointer;color:var(--accent);padding:4px 0;list-style:none}
+  details.help{font-size:13px;color:var(--sub);width:100%;border-top:1px solid var(--line);padding-top:4px}
+  details.help>summary{min-height:40px;display:flex;align-items:center;cursor:pointer;color:var(--accent);padding:4px 0;list-style:none;font-weight:750}
   details.help>summary::-webkit-details-marker{display:none}
-  details.help>summary::before{content:"▸ ";display:inline-block;transition:.15s}
-  details.help[open]>summary::before{content:"▾ "}
-  details.help .body{line-height:1.8;padding:4px 0 2px}
+  details.help>summary::before{content:"＋";width:24px;display:inline-block;font-size:17px;transition:.15s}
+  details.help[open]>summary::before{content:"−"}
+  details.help .body{line-height:1.8;padding:5px 0 4px;color:#59637a}
+  .page-footer{padding:18px 4px 0;text-align:center;color:#858da0;font-size:12px}
+
+  @media(max-width:1100px){
+    .image-controls{grid-template-columns:1fr 1fr}
+    .image-controls>.control-group:first-child{grid-column:1/-1}
+    .control-actions{grid-template-columns:1fr 1fr;grid-template-rows:none}
+  }
 
   /* ============ 手機／平板直式：版面重排 ============ */
   @media(max-width:768px){
-    header{padding:10px 12px;gap:4px;flex-wrap:wrap}
-    header h1{font-size:17px}
-    header .sub{font-size:12px;flex-basis:100%}
-    .tabs{margin:10px 8px 0;gap:4px}
-    .tab{flex:1;text-align:center;padding:12px 6px;font-size:16px}
-    .panel{margin:0 8px 18px;padding:12px;border-radius:12px}
+    .header-inner{min-height:70px;padding:11px 14px;gap:10px}
+    .brand-mark{width:40px;height:40px;border-radius:13px;font-size:21px}
+    .brand-copy h1{font-size:17px}
+    .brand-copy .sub{font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52vw}
+    .privacy-pill{padding:7px 9px;font-size:11px}
+    .notice{width:auto;margin:10px 10px 0;padding:9px 11px;border-radius:12px;font-size:11px;line-height:1.55}
+    .app-shell{margin-top:12px;padding:0 10px max(24px,env(safe-area-inset-bottom))}
+    .tabs{width:100%;margin-bottom:10px;padding:5px;border-radius:16px}
+    .tab{min-height:54px;padding:7px 9px;gap:8px}
+    .tab-icon{width:30px;height:30px}
+    .panel{padding:15px;border-radius:18px}
+    .panel-intro{align-items:flex-start;margin-bottom:15px}
+    .panel-intro h2{font-size:24px}
+    .panel-intro .lede{font-size:13px;line-height:1.6}
+    .intro-badge{display:none}
     /* iOS 對 <16px 的表單控制項會在聚焦時自動放大整頁 */
     select,textarea,input[type=text],input[type=number]{font-size:16px}
     .btn,button{min-height:44px}
-    .controls{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
+    .controls{display:grid;grid-template-columns:1fr;gap:10px;padding:10px;margin:14px 0}
+    .image-controls>.control-group:first-child{grid-column:auto}
+    .control-group{padding:12px}
+    .image-key-grid,.text-key-grid{grid-template-columns:1fr 1fr}
+    .appearance-grid{grid-template-columns:1fr 76px}
+    .appearance-grid .range-ctl{grid-column:1/-1}
     .ctl{min-width:0}
     .ctl select{width:100%}
-    .ctl.wide,.controls>.btn{grid-column:1/-1}
-    .stepper button{width:52px;height:44px}
+    .stepper{grid-template-columns:48px minmax(42px,1fr) 48px}
+    .stepper button{width:auto;height:44px}
     .stepper .semi{flex:1;font-size:17px}
-    #imgFont{width:100%!important}
     #imgColor{width:100%;height:44px;padding:4px}
-    .drop{padding:22px 12px}
-    .drop .hint{font-size:12px}
-    #canvasWrap{max-height:60vh;max-height:60svh;margin-top:10px}
-    #zoomBar{gap:6px;margin-top:10px}
-    #zoomBar>label{width:100%}
-    #zoomBar .btn{padding:8px 12px;font-size:14px;min-height:40px}
+    .control-actions{grid-template-columns:1fr 1fr}
+    .control-actions .btn{min-height:58px;padding:9px 10px}
+    .drop{min-height:190px;padding:23px 14px}
+    .drop-copy{font-size:13px}
+    .drop .hint{font-size:11px}
+    .drop.compact{padding:11px 12px}
+    .drop.compact .drop-copy{display:none}
+    #canvasWrap{max-height:60vh;max-height:60svh;margin-top:10px;padding:6px;border-radius:15px}
+    #zoomBar{width:100%;gap:6px;margin-top:10px}
+    #zoomBar .zoom-label{width:100%}
+    #zoomBar .btn{padding:8px 10px;font-size:13px;min-height:40px;flex:1}
+    #zoomBar .mobile-break{display:block;flex-basis:100%;width:100%;height:0}
+    #zoomFitW,#zoomFitP,#zoom100{flex:1 1 28%}
     #zoomBar .sep{display:none}
-    .toolrow{gap:8px}
+    .toolrow{gap:8px;padding:9px 10px}
     #pageNav{width:100%}
     #pageNav .btn{flex:1}
     #pgInfo{white-space:nowrap}
     .chk{font-size:15px;color:var(--ink)}
-    textarea,pre#textOut{min-height:190px;font-size:15px}
+    .editor-card{padding:11px;border-radius:14px}
+    textarea,pre#textOut{min-height:220px;font-size:15px;padding:13px}
     .colhead{flex-wrap:wrap;gap:6px}
+    .page-footer{padding-top:14px}
   }
-  .notice{max-width:1100px;margin:0 auto 14px;padding:10px 14px;font-size:13px;line-height:1.7;
-    color:var(--sub);background:#eef4ff;border:1px solid #d3e0f8;border-radius:10px}
-  @media(max-width:768px){.notice{margin:0 8px 12px;padding:9px 11px;font-size:12px;line-height:1.6}}
+  @media(max-width:520px){
+    .privacy-pill{font-size:0;padding:8px}
+    .privacy-pill::before{width:8px;height:8px}
+    .tab-copy small{display:none}
+    .panel-kicker{font-size:11px}
+    .drop-badges span:last-child{display:none}
+    .btn-glyph{display:none}
+    .control-actions .btn{justify-content:center;text-align:center}
+    .col-actions .btn{padding-inline:10px}
+  }
+  @media(max-width:360px){
+    .image-key-grid .ctl:nth-child(3),.image-key-grid .ctl:nth-child(4),
+    .text-key-grid .ctl:nth-child(3),.text-key-grid .ctl:nth-child(4){grid-column:1/-1}
+  }
+  @media(any-pointer:coarse){
+    .tab,.btn,.stepper button,select,input[type=color],details.help>summary{min-height:48px}
+    .chk{min-height:48px}
+    .chk input{width:22px;height:22px}
+    input[type=range]{height:38px}
+    body.touch #zoomBar{display:none!important}
+    #floatBar .fb{width:48px;height:48px;min-height:48px}
+  }
+  @media(any-hover:hover){
+    select:hover,.btn:hover,.stepper button:hover{border-color:#adb4c6}
+    .btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+    .drop:hover{border-color:var(--accent);box-shadow:0 10px 28px rgba(86,84,212,.1);transform:translateY(-1px)}
+  }
+  @media(max-height:600px) and (any-pointer:coarse){
+    #canvasWrap{max-height:68vh;max-height:68svh}
+  }
+  @media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}
+  }
 </style>
 </head>
 <body>
-<header>
-  <h1>🎸 和弦轉調工具</h1>
-  <span class="sub">圖片和弦譜 OCR 辨識標註轉調・文字譜轉調</span>
+<header class="site-header">
+  <div class="header-inner">
+    <div class="brand-mark" aria-hidden="true">♬</div>
+    <div class="brand-copy">
+      <h1>和弦轉調工具</h1>
+      <span class="sub">圖片辨識、文字轉調與新譜匯出，一次完成</span>
+    </div>
+    <span class="privacy-pill">只在你的瀏覽器處理</span>
+  </div>
 </header>
 
-<p class="notice">🔒 所有辨識與轉調都在<b>您自己的瀏覽器</b>中完成，譜面檔案不會上傳到任何伺服器，本站也沒有後端可以儲存它們。<br>⚠️ 請自行確認您對所處理的譜面擁有合法使用權；本工具不提供、不散布任何譜面內容。</p>
+<p class="notice">🔒 譜面只在你的裝置中處理，不上傳、不保存。請確認你擁有譜面的合法使用權。</p>
 
-<div class="tabs">
-  <div class="tab active" data-tab="img">圖片譜</div>
-  <div class="tab" data-tab="txt">文字譜</div>
-</div>
-
-<!-- ============ 圖片模式 ============ -->
-<div class="panel active" id="panel-img">
-  <div class="drop" id="drop">
-    <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf">
-    <div style="font-size:30px">📷</div>
-    <div>點擊選擇圖片或 PDF、拖曳到此處，或直接 Ctrl+V 貼上截圖</div>
-    <div class="hint">支援 JPG / PNG / PDF（多頁可切換），辨識在你的瀏覽器本機完成，不會上傳到伺服器（首次使用需網路載入辨識引擎）</div>
+<main class="app-shell">
+  <div class="tabs" role="tablist" aria-label="轉調模式">
+    <button type="button" class="tab active" id="tab-img" data-tab="img" role="tab" aria-selected="true" aria-controls="panel-img">
+      <span class="tab-icon" aria-hidden="true">▧</span>
+      <span class="tab-copy"><b>圖片譜</b><small>辨識、標註、匯出</small></span>
+    </button>
+    <button type="button" class="tab" id="tab-txt" data-tab="txt" role="tab" aria-selected="false" aria-controls="panel-txt" tabindex="-1">
+      <span class="tab-icon" aria-hidden="true">≡</span>
+      <span class="tab-copy"><b>文字譜</b><small>貼上後即時轉調</small></span>
+    </button>
   </div>
 
-  <div id="progressWrap">
+<!-- ============ 圖片模式 ============ -->
+<section class="panel active" id="panel-img" role="tabpanel" aria-labelledby="tab-img" aria-hidden="false">
+  <div class="panel-intro">
+    <div>
+      <p class="panel-kicker">Image score</p>
+      <h2>讓譜面跟著你換調</h2>
+      <p class="lede">放入圖片或 PDF，系統會找出和弦、套用新調，並保留原本的譜面版面。</p>
+    </div>
+    <span class="intro-badge">檔案不上傳</span>
+  </div>
+  <div class="drop" id="drop" role="button" tabindex="0" aria-label="選擇圖片或 PDF 譜面">
+    <input type="file" id="fileInput" accept="image/*,.pdf,application/pdf">
+    <div class="drop-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 15.5v3A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5v-3"/>
+        <path d="M12 4v11M7.8 8.3 12 4l4.2 4.3"/>
+      </svg>
+    </div>
+    <div class="drop-title" id="dropTitle">把譜面放進來</div>
+    <div class="drop-copy">點一下選檔，也可以<b>拖放</b>或直接 <b>Ctrl＋V</b> 貼上截圖</div>
+    <div class="drop-badges" aria-hidden="true"><span>JPG / PNG</span><span>多頁 PDF</span><span>瀏覽器本機辨識</span></div>
+    <div class="hint">第一次辨識需要載入引擎；完成後即可調整和弦、標註樣式與匯出格式。</div>
+  </div>
+
+  <div id="progressWrap" role="status" aria-live="polite">
     <div id="progressBar"><div></div></div>
     <div id="progressText">準備中…</div>
   </div>
 
-  <div class="controls hide" id="imgControls">
-    <div class="ctl"><label>原調 (Key)</label><select id="imgFrom"></select></div>
-    <div class="ctl"><label>新調 (Key)</label><select id="imgTo"></select></div>
-    <div class="ctl"><label>升降半音</label>
-      <div class="stepper">
-        <button id="imgDown">−</button><span class="semi" id="imgSemi">0</span><button id="imgUp">＋</button>
+  <div class="controls image-controls hide" id="imgControls">
+    <div class="control-group">
+      <div class="group-title">轉調設定</div>
+      <div class="control-grid image-key-grid">
+        <div class="ctl"><label for="imgFrom">原調 (Key)</label><select id="imgFrom"></select></div>
+        <div class="ctl"><label for="imgTo">新調 (Key)</label><select id="imgTo"></select></div>
+        <div class="ctl"><label>升降半音</label>
+          <div class="stepper">
+            <button type="button" id="imgDown" aria-label="降低半音">−</button><span class="semi" id="imgSemi">0</span><button type="button" id="imgUp" aria-label="升高半音">＋</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="imgStyle">升降記號</label>
+          <select id="imgStyle"><option value="auto">自動</option><option value="sharp">用 ♯</option><option value="flat">用 ♭</option></select>
+        </div>
       </div>
     </div>
-    <div class="ctl"><label>升降記號</label>
-      <select id="imgStyle"><option value="auto">自動</option><option value="sharp">用 ♯</option><option value="flat">用 ♭</option></select>
+    <div class="control-group">
+      <div class="group-title">標註外觀</div>
+      <div class="control-grid appearance-grid">
+        <div class="ctl"><label for="imgMode">標註方式</label>
+          <select id="imgMode"><option value="cover">覆蓋原和弦</option><option value="above">標在原和弦上方</option></select>
+        </div>
+        <div class="ctl color-ctl"><label for="imgColor">顏色</label><input type="color" id="imgColor" value="#d3273e"></div>
+        <div class="ctl range-ctl"><label for="imgFont">字級（<span id="fontVal">100%</span>）</label><input type="range" id="imgFont" min="50" max="300" value="100" step="5"></div>
+      </div>
     </div>
-    <div class="ctl"><label>標註方式</label>
-      <select id="imgMode"><option value="cover">覆蓋原和弦</option><option value="above">標在原和弦上方</option></select>
+    <div class="control-actions" aria-label="匯出譜面">
+      <button type="button" class="btn primary" id="btnDownload">
+        <span class="btn-glyph" aria-hidden="true">↓</span><span class="btn-label">下載本頁<small>PNG 圖片</small></span>
+      </button>
+      <button type="button" class="btn primary" id="btnPdfAll">
+        <span class="btn-glyph" aria-hidden="true">⇩</span><span class="btn-label">下載全部<small>多頁 PDF</small></span>
+      </button>
     </div>
-    <div class="ctl wide"><label>新和弦顏色</label><input type="color" id="imgColor" value="#d3273e"></div>
-    <div class="ctl wide"><label>標註字級（<span id="fontVal">100%</span>）</label><input type="range" id="imgFont" min="50" max="300" value="100" step="5" style="width:120px"></div>
-    <button class="btn primary" id="btnDownload">下載本頁 PNG ⬇</button>
-    <button class="btn primary" id="btnPdfAll">下載全部 PDF ⬇</button>
   </div>
 
   <div id="detInfo"></div>
   <div id="zoomBar">
-    <label style="font-size:13px;color:var(--sub)">顯示縮放</label>
-    <button class="btn" id="zoomOut" title="縮小（Ctrl + 滾輪也可以）">−</button>
+    <span class="zoom-label">顯示縮放</span>
+    <button type="button" class="btn" id="zoomOut" title="縮小（Ctrl + 滾輪也可以）" aria-label="縮小譜面">−</button>
     <span id="zoomVal">100%</span>
-    <button class="btn" id="zoomIn" title="放大（Ctrl + 滾輪也可以）">＋</button>
+    <button type="button" class="btn" id="zoomIn" title="放大（Ctrl + 滾輪也可以）" aria-label="放大譜面">＋</button>
+    <span class="mobile-break" aria-hidden="true"></span>
     <span class="sep"></span>
-    <button class="btn" id="zoomFitW" title="寬度貼齊視窗">符合寬度</button>
-    <button class="btn" id="zoomFitP" title="整頁塞進視窗">符合整頁</button>
-    <button class="btn" id="zoom100" title="原始像素大小">100%</button>
+    <button type="button" class="btn" id="zoomFitW" title="寬度貼齊視窗">符合寬度</button>
+    <button type="button" class="btn" id="zoomFitP" title="整頁塞進視窗">符合整頁</button>
+    <button type="button" class="btn" id="zoom100" title="原始像素大小">100%</button>
   </div>
   <div id="canvasArea">
     <div id="canvasWrap"><canvas id="imgCanvas"></canvas></div>
-    <div id="floatBar">
-      <button class="btn fb" id="fbMode" title="切換瀏覽／編輯">✋</button>
-      <button class="btn fb" id="fbOut" title="縮小">−</button>
-      <button class="btn fb" id="fbIn" title="放大">＋</button>
-      <button class="btn fb" id="fbFit" title="符合寬度">⇔</button>
+    <div id="floatBar" role="toolbar" aria-label="觸控譜面工具">
+      <button type="button" class="btn fb" id="fbMode" title="切換瀏覽／編輯" aria-label="切換譜面瀏覽與編輯模式" aria-pressed="false">✋</button>
+      <button type="button" class="btn fb" id="fbOut" title="縮小" aria-label="縮小譜面">−</button>
+      <button type="button" class="btn fb" id="fbIn" title="放大" aria-label="放大譜面">＋</button>
+      <button type="button" class="btn fb" id="fbFit" title="符合寬度" aria-label="譜面符合畫面寬度">⇔</button>
     </div>
   </div>
   <div id="modeTip" class="hide"></div>
   <div class="toolrow hide" id="imgTools">
     <span id="pageNav">
-      <button class="btn" id="pgPrev">◀ 上一頁</button>
+      <button type="button" class="btn" id="pgPrev">◀ 上一頁</button>
       <b id="pgInfo"></b>
-      <button class="btn" id="pgNext">下一頁 ▶</button>
+      <button type="button" class="btn" id="pgNext">下一頁 ▶</button>
     </span>
     <label class="chk"><input type="checkbox" id="showBoxes" checked> 顯示辨識框</label>
     <details class="help">
@@ -207,25 +388,41 @@
       </div>
     </details>
   </div>
-</div>
+</section>
 
 <!-- ============ 文字模式 ============ -->
-<div class="panel" id="panel-txt">
-  <div class="controls">
-    <div class="ctl"><label>原調 (Key)</label><select id="txtFrom"></select></div>
-    <div class="ctl"><label>新調 (Key)</label><select id="txtTo"></select></div>
-    <div class="ctl"><label>升降半音</label>
-      <div class="stepper">
-        <button id="txtDown">−</button><span class="semi" id="txtSemi">0</span><button id="txtUp">＋</button>
-      </div>
+<section class="panel" id="panel-txt" role="tabpanel" aria-labelledby="tab-txt" aria-hidden="true">
+  <div class="panel-intro">
+    <div>
+      <p class="panel-kicker">Text score</p>
+      <h2>貼上文字，立即換調</h2>
+      <p class="lede">保留原本換行與和弦位置；一般和弦列和 [C] 行內標記都支援。</p>
     </div>
-    <div class="ctl"><label>升降記號</label>
-      <select id="txtStyle"><option value="auto">自動</option><option value="sharp">用 ♯</option><option value="flat">用 ♭</option></select>
+    <span class="intro-badge">即時預覽</span>
+  </div>
+  <div class="controls text-controls">
+    <div class="control-group">
+      <div class="group-title">轉調設定</div>
+      <div class="control-grid text-key-grid">
+        <div class="ctl"><label for="txtFrom">原調 (Key)</label><select id="txtFrom"></select></div>
+        <div class="ctl"><label for="txtTo">新調 (Key)</label><select id="txtTo"></select></div>
+        <div class="ctl"><label>升降半音</label>
+          <div class="stepper">
+            <button type="button" id="txtDown" aria-label="降低半音">−</button><span class="semi" id="txtSemi">0</span><button type="button" id="txtUp" aria-label="升高半音">＋</button>
+          </div>
+        </div>
+        <div class="ctl"><label for="txtStyle">升降記號</label>
+          <select id="txtStyle"><option value="auto">自動</option><option value="sharp">用 ♯</option><option value="flat">用 ♭</option></select>
+        </div>
+      </div>
     </div>
   </div>
   <div class="cols">
-    <div>
-      <div class="colhead"><b>原譜（貼上文字和弦譜）</b><button class="btn" id="btnSample">範例</button></div>
+    <div class="editor-card">
+      <div class="colhead">
+        <div class="coltitle"><span class="coltitle-icon" aria-hidden="true">✎</span><b>原譜</b></div>
+        <button type="button" class="btn" id="btnSample">帶入範例</button>
+      </div>
       <textarea id="textIn" placeholder="貼上和弦譜，例如：
 
 C        G/B      Am7
@@ -233,17 +430,21 @@ C        G/B      Am7
 
 也支援 [C]夾在[G]歌詞[Am]中 的格式"></textarea>
     </div>
-    <div>
-      <div class="colhead"><b>轉調結果</b>
-        <span>
-          <button class="btn" id="btnCopy">複製</button>
-          <button class="btn" id="btnSaveTxt">下載 .txt</button>
+    <div class="editor-card">
+      <div class="colhead">
+        <div class="coltitle"><span class="coltitle-icon" aria-hidden="true">↗</span><b>轉調結果</b></div>
+        <span class="col-actions">
+          <button type="button" class="btn" id="btnCopy">複製</button>
+          <button type="button" class="btn" id="btnSaveTxt">下載 .txt</button>
         </span>
       </div>
-      <pre id="textOut"></pre>
+      <pre id="textOut" aria-live="polite"></pre>
     </div>
   </div>
-</div>
+</section>
+
+<footer class="page-footer">為排練與演出準備的輕量工具・所有處理都在你的瀏覽器中完成</footer>
+</main>
 
 <script>
 // ===================== 和弦核心邏輯 =====================
@@ -541,9 +742,31 @@ function setupControls(p,onChange){
 }
 
 // ---------- 分頁 ----------
-document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
-  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x===t));
-  document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id==='panel-'+t.dataset.tab));
+const tabs=[...document.querySelectorAll('.tab')];
+function activateTab(t,focus=false){
+  tabs.forEach(x=>{
+    const on=x===t;
+    x.classList.toggle('active',on);
+    x.setAttribute('aria-selected',String(on));
+    x.tabIndex=on?0:-1;
+  });
+  document.querySelectorAll('.panel').forEach(p=>{
+    const on=p.id==='panel-'+t.dataset.tab;
+    p.classList.toggle('active',on);
+    p.setAttribute('aria-hidden',String(!on));
+  });
+  if(focus)t.focus();
+}
+tabs.forEach((t,i)=>{
+  t.onclick=()=>activateTab(t);
+  t.onkeydown=e=>{
+    let next=null;
+    if(e.key==='ArrowRight'||e.key==='ArrowDown')next=tabs[(i+1)%tabs.length];
+    if(e.key==='ArrowLeft'||e.key==='ArrowUp')next=tabs[(i-1+tabs.length)%tabs.length];
+    if(e.key==='Home')next=tabs[0];
+    if(e.key==='End')next=tabs[tabs.length-1];
+    if(next){e.preventDefault();activateTab(next,true);}
+  };
 });
 
 // ===================== 文字模式 =====================
@@ -601,6 +824,9 @@ document.getElementById('imgFont').oninput=()=>{
 document.getElementById('showBoxes').onchange=renderImage;
 
 drop.onclick=()=>fileInput.click();
+drop.onkeydown=e=>{
+  if(e.key==='Enter'||e.key===' '){e.preventDefault();fileInput.click();}
+};
 drop.ondragover=e=>{e.preventDefault();drop.classList.add('over');};
 drop.ondragleave=()=>drop.classList.remove('over');
 drop.ondrop=e=>{e.preventDefault();drop.classList.remove('over');if(e.dataTransfer.files[0])loadFile(e.dataTransfer.files[0]);};
@@ -662,6 +888,9 @@ async function runOCR(){
     wrap.style.display='none';
     document.getElementById('imgControls').classList.remove('hide');
     document.getElementById('imgTools').classList.remove('hide');
+    drop.classList.add('compact');
+    document.getElementById('dropTitle').textContent='更換譜面';
+    drop.setAttribute('aria-label','更換圖片或 PDF 譜面');
     canvasWrap.style.display='block';
     document.getElementById('zoomBar').style.display='flex';
     document.getElementById('pageNav').style.display=pages.length>1?'flex':'none';
@@ -1013,6 +1242,8 @@ function setEditMode(on){
   const b=document.getElementById('fbMode');
   b.textContent=on?'✏️':'✋';
   b.classList.toggle('act',on);
+  b.setAttribute('aria-pressed',String(on));
+  b.setAttribute('aria-label',on?'目前為編輯模式；切換到瀏覽模式':'目前為瀏覽模式；切換到編輯模式');
   b.title=on?'目前：編輯標註（點一下切回瀏覽）':'目前：瀏覽譜面（點一下切到編輯）';
   canvasWrap.classList.toggle('viewmode',!on);
   document.getElementById('modeTip').innerHTML=on

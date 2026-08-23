@@ -1,5 +1,11 @@
 # 專案知識庫
 
+## 2026-08-23 — 視覺系統、語意頁籤與觸控控制密度
+- 頁面已改成置中的 `.app-shell`、卡片式 `.panel` 與群組化 `.controls`；圖片載入成功後，上傳區會加 `.compact` 變成「更換譜面」列。調整 UI 時仍須保留既有控制項 id，OCR／轉調與 jsdom 手勢測試都依賴它們。
+- 圖片／文字模式現在是原生 `<button role="tab">` 搭配 `<section role="tabpanel">`，`activateTab()` 同步 `aria-selected`、`tabIndex`、`aria-hidden`，並支援方向鍵、Home、End。上傳區可用 Enter／Space；觸控瀏覽／編輯按鈕同步 `aria-pressed`。
+- 觸控尺寸不只靠寬度斷點：`@media(any-pointer:coarse)` 將主要控制與浮動工具提高到 48px、放大 range／checkbox，隱藏和浮動工具重複的桌面縮放列；浮動列與頁面底部使用 `env(safe-area-inset-*)` 避開手機安全區。320px 以下的半音與升降記號控制改跨欄，避免 stepper 擠壓。
+- 部署版隱私提醒的 CSS 已併回唯一原始碼；`build_site.py` 只在 `</header>` 後注入精簡提醒，避免綁死 header 文案。驗證基準為原始碼與 `docs/index.html` 各 64 項 jsdom 斷言、`node --check`、建置，以及 320／390／834／1440 寬度瀏覽器實測。
+
 ## 2026-08-01 — 手機版：響應式版面 ＋ 觸控手勢（瀏覽/編輯模式）
 - **最大的坑：`#imgCanvas{touch-action:none}` 讓手機完全不能操作**。這行是 2026-07-31 為了讓「拖曳綠框」不被瀏覽器捲動吃掉才加的，代價是**手指在譜面上做任何事都不會捲動也不會縮放** —— 桌機看不出問題（有滾輪、有 Ctrl＋滾輪），手機上譜面等於被釘死。而且縮放入口只綁 `Ctrl/⌘＋滾輪`，觸控裝置根本沒有對應手勢。
 - 解法不是拿掉 `touch-action:none`（那樣就換成拖曳標註失效），而是**兩者都自己實作**：
