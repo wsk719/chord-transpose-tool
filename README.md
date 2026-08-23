@@ -25,6 +25,8 @@
 npm i jsdom                              # 只有跑測試才需要
 node tests/test_mobile.js                # 測原始碼
 node tests/test_mobile.js docs/index.html  # 測產出的部署版
+node tests/test_ocr.js                   # OCR 純函式回歸測試（不需 jsdom）
+node tests/test_ocr.js docs/index.html   # 確認部署版包含相同 OCR 修正
 ```
 
 ## 手機上怎麼用

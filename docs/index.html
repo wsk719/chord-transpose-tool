@@ -468,6 +468,10 @@ function parseChord(raw){
   return {root:m[1],suffix,bass:m[3]||null};
 }
 
+function isImplausiblyWideSingleChord(text,b){
+  return text.length===1&&(b.x1-b.x0)>(b.y1-b.y0)*2.2;
+}
+
 // bass 是否為合理的轉位音（排除 FB、BG 這類 OCR 連字誤判）
 function plausibleBass(root,bass){
   root=(root.match(/^[A-G][#b]?/)||[])[0];bass=(bass.match(/^[A-G][#b]?/)||[])[0];
@@ -575,6 +579,21 @@ function mergeDets(A,B){
   return out;
 }
 
+function sortDetsReadingOrder(dets){
+  if(dets.length<2)return dets;
+  const hs=dets.map(d=>d.bbox.y1-d.bbox.y0).sort((a,b)=>a-b);
+  const medH=hs[Math.floor(hs.length/2)];
+  const rows=[];
+  for(const d of [...dets].sort((a,b)=>(a.bbox.y0+a.bbox.y1)-(b.bbox.y0+b.bbox.y1))){
+    const cy=(d.bbox.y0+d.bbox.y1)/2;
+    let row=rows.find(r=>Math.abs(r.cy-cy)<1.5*medH);
+    if(row){row.cy=(row.cy*row.items.length+cy)/(row.items.length+1);row.items.push(d);}
+    else rows.push({cy,items:[d]});
+  }
+  rows.sort((a,b)=>a.cy-b.cy);
+  return rows.flatMap(r=>r.items.sort((a,b)=>a.bbox.x0-b.bbox.x0));
+}
+
 // 稀疏模式救援用的積極修正（只在已知和弦列高度帶內使用）：ENG:→E7/G#、Co→C
 function sparseCorrect(raw){
   let r=correctToken(raw,false); if(r)return r;
@@ -590,6 +609,26 @@ function sparseCorrect(raw){
   m=t0.match(/^([A-G][#b]?)[a-z]$/);
   if(m&&parseChord(m[1]))return{str:m[1],lead:0,split:null};
   return null;
+}
+
+function findSparseChordBands(data,correct=correctToken){
+  const seeds=[];
+  for(const line of (data.lines||[]))for(const w of (line.words||[])){
+    if(w.confidence<=12)continue;
+    const r=correct(w.text,false);
+    if(!r||r.str.length<2)continue;
+    const h=w.bbox.y1-w.bbox.y0;
+    seeds.push({cy:(w.bbox.y0+w.bbox.y1)/2,h});
+  }
+  if(!seeds.length)return [];
+  const hs=seeds.map(s=>s.h).sort((a,b)=>a-b),medH=hs[Math.floor(hs.length/2)];
+  const bands=[];
+  for(const s of seeds){
+    let b=bands.find(x=>Math.abs(x.cy-s.cy)<1.25*medH);
+    if(b){b.cy=(b.cy*b.n+s.cy)/(b.n+1);b.h=(b.h*b.n+s.h)/(b.n+1);b.n++;}
+    else bands.push({cy:s.cy,h:s.h,n:1});
+  }
+  return bands.filter(b=>b.n>=3);
 }
 
 // 第三輪稀疏掃描：只在既有和弦的水平列高度帶內、不與現有偵測重疊處撿漏
@@ -810,6 +849,10 @@ document.getElementById('btnSaveTxt').onclick=()=>{
 const drop=document.getElementById('drop'),fileInput=document.getElementById('fileInput');
 const canvas=document.getElementById('imgCanvas'),ctx=canvas.getContext('2d');
 const canvasWrap=document.getElementById('canvasWrap');
+const PDF_RENDER_TARGET=2600,PDF_RENDER_MAX_SCALE=5;
+function pdfRenderScale(width){
+  return Math.min(PDF_RENDER_MAX_SCALE,Math.max(1.5,PDF_RENDER_TARGET/width));
+}
 let pages=[],cur=0; // 每頁 {img, dets:[{text,chord,bbox,on,manual?}]}
 const curPage=()=>pages[cur]||null;
 const allDets=()=>pages.flatMap(p=>p.dets||[]);
@@ -856,7 +899,9 @@ async function loadPdf(file){
       txt.textContent='轉換 PDF 第 '+i+' / '+pdf.numPages+' 頁…';
       const page=await pdf.getPage(i);
       let vp=page.getViewport({scale:1});
-      const sc=Math.min(3,Math.max(1.5,1600/vp.width));
+      // 直接以 OCR 所需解析度渲染；若先縮成 1600px、之後在 ocrOne 再放大，
+      // 小型和弦字（尤其單字母 G/C/F）會因插值變糊，整列都可能被 PSM 3 略過。
+      const sc=pdfRenderScale(vp.width);
       vp=page.getViewport({scale:sc});
       const c=document.createElement('canvas');
       c.width=Math.round(vp.width);c.height=Math.round(vp.height);
@@ -988,6 +1033,8 @@ async function ocrOne(worker,img){
     // 把辨識字轉成偵測項（低信心的 FIG 形多半是「F |G」兩個和弦，拆開）
     function makeDets(r,w){
       const b=w.bbox,raw=norm(w.text).trim();
+      // 單字母和弦的框不應比字高寬數倍；這種框通常是譜線／歌詞圖形被合成一個 A-G。
+      if(isImplausiblyWideSingleChord(r.str,b))return [];
       // 低信心且「寬扁」的 FIG 形其實多半是「F |G」兩個和弦；窄的（CIG）是真斜線和弦
       if(r.split&&w.confidence<40&&(b.x1-b.x0)>(b.y1-b.y0)*3.5){
         const wd=(b.x1-b.x0)/3;
@@ -1049,20 +1096,45 @@ async function ocrOne(worker,img){
       }
       return accepted;
     };
+    // PSM 3 可能整列略過稀疏和弦；先從 PSM 11 找到同高的多字元和弦，
+    // 只有一列至少三個可信候選時才建立窄帶，再用 PSM 7 單行補掃。
+    // 這樣能救回同行的單字母 G/C/F，同時不會把只有零星英文字的歌詞列當和弦列。
+    const scanChordBands=async(pre,data)=>{
+      let out=[];
+      const bands=findSparseChordBands(data);
+      if(!bands.length)return out;
+      await worker.setParameters({tessedit_pageseg_mode:'7'});
+      for(const b of bands){
+        // 只保留文字本身；下緣若碰到第一條譜線，Tesseract 會把單字母
+        // 與譜線黏成 -C／CB，反而比整頁稀疏模式更差。
+        const top=Math.max(0,Math.floor(b.cy-b.h));
+        const bottom=Math.min(pre.height,Math.ceil(b.cy+b.h*0.9));
+        const strip=document.createElement('canvas');strip.width=pre.width;strip.height=bottom-top;
+        strip.getContext('2d').drawImage(pre,0,top,pre.width,bottom-top,0,0,pre.width,bottom-top);
+        const {data:bandData}=await worker.recognize(strip);
+        for(const line of (bandData.lines||[]))for(const w of (line.words||[])){
+          w.bbox.y0+=top;w.bbox.y1+=top;
+        }
+        out=mergeDets(out,detectFrom(bandData));
+      }
+      return out;
+    };
     // 兩輪辨識（灰階與原色互補），聯集合併
-    const {data:dataA}=await worker.recognize(buildPre(true));
+    const preFiltered=buildPre(true),preColor=buildPre(false);
+    const {data:dataA}=await worker.recognize(preFiltered);
     const detsA=detectFrom(dataA);
-    const {data:dataB}=await worker.recognize(buildPre(false));
+    const {data:dataB}=await worker.recognize(preColor);
     const detsB=detectFrom(dataB);
     let merged=mergeDets(detsA,detsB);
     // 五線譜再跑第三輪稀疏掃描，在和弦列高度帶內撿漏
     if(isStaff&&merged.length){
       await worker.setParameters({tessedit_pageseg_mode:'11'});
-      const {data:dataC}=await worker.recognize(buildPre(true));
+      const {data:dataC}=await worker.recognize(preFiltered);
+      merged=mergeDets(merged,await scanChordBands(preFiltered,dataC));
       merged=merged.concat(sparseRescue(merged,dataC,scale));
       await worker.setParameters({tessedit_pageseg_mode:'3'});
     }
-    return merged;
+    return sortDetsReadingOrder(merged);
   }catch(err){
     console.error('ocrOne:',err);
     return [];
