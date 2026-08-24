@@ -676,6 +676,14 @@ function findSparseChordBands(data,correct=correctToken){
   return bands.filter(b=>b.n>=3);
 }
 
+function sparseBandCrop(b,maxHeight){
+  return {
+    top:Math.max(0,Math.floor(b.cy-b.h)),
+    // 下緣只保留到和弦基線附近；再往下會吃到小節線，讓單字母 C 與譜面黏成大框。
+    bottom:Math.min(maxHeight,Math.ceil(b.cy+b.h*0.5))
+  };
+}
+
 // 第三輪稀疏掃描：只在既有和弦的水平列高度帶內、不與現有偵測重疊處撿漏
 function sparseRescue(dets,data,scale){
   if(!dets.length)return [];
@@ -1170,8 +1178,7 @@ async function ocrOne(worker,img){
       for(const b of bands){
         // 只保留文字本身；下緣若碰到第一條譜線，Tesseract 會把單字母
         // 與譜線黏成 -C／CB，反而比整頁稀疏模式更差。
-        const top=Math.max(0,Math.floor(b.cy-b.h));
-        const bottom=Math.min(pre.height,Math.ceil(b.cy+b.h*0.9));
+        const {top,bottom}=sparseBandCrop(b,pre.height);
         const strip=document.createElement('canvas');strip.width=pre.width;strip.height=bottom-top;
         strip.getContext('2d').drawImage(pre,0,top,pre.width,bottom-top,0,0,pre.width,bottom-top);
         const {data:bandData}=await worker.recognize(strip);

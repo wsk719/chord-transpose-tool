@@ -39,8 +39,9 @@ const api = new Function(`${constants}
   ${functionSource('pdfRenderScale')}
   ${functionSource('isImplausiblyWideSingleChord')}
   ${functionSource('findSparseChordBands')}
+  ${functionSource('sparseBandCrop')}
   ${functionSource('sortDetsReadingOrder')}
-  return {correctToken,leadingQuoteChord,repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
+  return {correctToken,leadingQuoteChord,repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sparseBandCrop,sortDetsReadingOrder};`)();
 
 let passes = 0, fails = 0;
 function ok(cond, message) {
@@ -97,6 +98,12 @@ const sparseData = {lines: [{words: [
 const bands = api.findSparseChordBands(sparseData, parse);
 ok(bands.length === 3, `應建立 3 個可信和弦窄帶並排除 2 候選雜訊列，實得 ${bands.length}`);
 ok(bands.every(b => b.n >= 3), '每個補掃窄帶都應至少有 3 個多字符和弦錨點');
+
+const verticalLineCrop = api.sparseBandCrop({cy:652,h:36}, 3000);
+ok(verticalLineCrop.top === 616 && verticalLineCrop.bottom === 670,
+  `和弦窄帶下緣應停在基線附近、避開 C 下方小節線，實得 ${JSON.stringify(verticalLineCrop)}`);
+ok(api.sparseBandCrop({cy:12,h:20}, 25).top === 0 && api.sparseBandCrop({cy:20,h:20}, 25).bottom === 25,
+  '和弦窄帶裁切仍應限制在影像上下邊界內');
 
 const expected = ['G','C','G/B','Am7','C/G','Fmaj7','G','G/F','E7','E7/G#','Am7','C/G','F','C/E','Dm7','G','Dm7','G7','C'];
 const points = expected.map((text, i) => {
