@@ -595,16 +595,26 @@ function sortDetsReadingOrder(dets){
 }
 
 // 稀疏模式救援用的積極修正（只在已知和弦列高度帶內使用）：ENG:→E7/G#、Co→C
+function repeatEndingChordTail(raw){
+  const s=norm(raw).trim();
+  const m=s.match(/^(?:[|Il!]{1,3})?\d+[.:\-]\s*(.+)$/);
+  return m?{tail:m[1],lead:s.length-m[1].length}:null;
+}
 function sparseCorrect(raw){
   let r=correctToken(raw,false); if(r)return r;
   r=sharpenToken(raw,false); if(r)return r;   // 稀疏掃描已限定在和弦列高度帶內，可安全用 ♯ 修正
   const s=norm(raw).trim();
+  const ending=repeatEndingChordTail(s);
+  if(ending&&(r=correctToken(ending.tail,false)))return{...r,lead:ending.lead};
+  // 反覆結尾線緊貼 D 時，單行 OCR 實測會把 Dm7 讀成 pm?；只在可信和弦窄帶修正。
+  let m=s.match(/^[pP](m(?:aj)?)[?’'”`´]+$/);
+  if(m){const chord='D'+m[1]+'7';if(parseChord(chord))return{str:chord,lead:0,split:null};}
   if(!/^[A-G]/.test(s))return null;
   const t0=s.replace(/[),\].,;!]+$/,'');
   const t1=t0.replace(/:$/,'#');
   // N→7 只在字尾原本是 :（# 被誤讀）時允許，避免 AND 這類單字被誤修
   const mid=t1!==t0?'[TN]':'T';
-  let m=t1.match(new RegExp('^([A-G][#b]?)'+mid+'[Il1]?([A-Ga-g][#b]?)$'));
+  m=t1.match(new RegExp('^([A-G][#b]?)'+mid+'[Il1]?([A-Ga-g][#b]?)$'));
   if(m&&plausibleBass(m[1],m[2].toUpperCase())){const c=m[1]+'7/'+m[2].toUpperCase(); if(parseChord(c))return{str:c,lead:0,split:null};}
   m=t0.match(/^([A-G][#b]?)[a-z]$/);
   if(m&&parseChord(m[1]))return{str:m[1],lead:0,split:null};
@@ -1115,7 +1125,14 @@ async function ocrOne(worker,img){
         for(const line of (bandData.lines||[]))for(const w of (line.words||[])){
           w.bbox.y0+=top;w.bbox.y1+=top;
         }
-        out=mergeDets(out,detectFrom(bandData));
+        const words=(bandData.lines||[]).flatMap(line=>line.words||[]);
+        const repeatEnding=words.some(w=>repeatEndingChordTail(w.text));
+        const bandDets=repeatEnding?[]:detectFrom(bandData);
+        if(repeatEnding)for(const w of words){
+          const r=sparseCorrect(w.text);
+          if(r&&(r.str.length>1||w.confidence>=20))bandDets.push(...makeDets(r,w));
+        }
+        out=mergeDets(out,bandDets);
       }
       return out;
     };

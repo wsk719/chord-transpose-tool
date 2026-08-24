@@ -19,12 +19,25 @@ function functionSource(name) {
 
 const constants = /const PDF_RENDER_TARGET=\d+,PDF_RENDER_MAX_SCALE=\d+;/.exec(src)?.[0];
 if (!constants) throw new Error('找不到 PDF 渲染常數');
+const noteIndex = /const NOTE_INDEX=\{[^;]+;/.exec(src)?.[0];
+const sharpLookalike = /const SHARP_LOOKALIKE=.*?;/.exec(src)?.[0];
+if (!noteIndex || !sharpLookalike) throw new Error('找不到和弦解析常數');
 const api = new Function(`${constants}
+  ${noteIndex}
+  ${functionSource('norm')}
+  ${functionSource('parseChord')}
+  ${functionSource('plausibleBass')}
+  ${functionSource('correctCore')}
+  ${functionSource('correctToken')}
+  ${sharpLookalike}
+  ${functionSource('sharpenToken')}
+  ${functionSource('repeatEndingChordTail')}
+  ${functionSource('sparseCorrect')}
   ${functionSource('pdfRenderScale')}
   ${functionSource('isImplausiblyWideSingleChord')}
   ${functionSource('findSparseChordBands')}
   ${functionSource('sortDetsReadingOrder')}
-  return {pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
+  return {repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
 
 let passes = 0, fails = 0;
 function ok(cond, message) {
@@ -36,6 +49,12 @@ const pdfScale = api.pdfRenderScale(566.46);
 ok(pdfScale > 4.5 && pdfScale < 4.7,
   `裁切 PDF 應直接渲染到約 2600px（scale≈4.59），實得 ${pdfScale.toFixed(2)}`);
 ok(api.pdfRenderScale(2000) === 1.5, '大型 PDF 頁面應維持最小 1.5 倍渲染');
+
+ok(api.sparseCorrect('pm?')?.str === 'Dm7', '可信窄帶內 pm? 應還原為 Dm7');
+ok(api.sparseCorrect('Gc')?.str === 'G', '可信窄帶內 Gc 應還原為 G');
+ok(api.sparseCorrect('||2-Dm7')?.str === 'Dm7', '可信窄帶內黏住第二結尾線的 ||2-Dm7 應還原為 Dm7');
+ok(api.repeatEndingChordTail('||2-Dm7')?.tail === 'Dm7', '應辨識反覆結尾編號黏和弦標誌');
+ok(api.repeatEndingChordTail('G/B') === null, '一般和弦列不應啟動反覆結尾積極解析');
 
 ok(api.isImplausiblyWideSingleChord('A', {x0: 0, y0: 0, x1: 104, y1: 25}),
   '寬度達字高四倍的假 A 應拒絕');
