@@ -104,18 +104,21 @@
   .drop-badges{position:relative;display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin-top:14px}
   .drop-badges span{padding:5px 9px;border:1px solid rgba(203,209,223,.9);border-radius:999px;background:rgba(255,255,255,.72);font-size:11px;font-weight:700}
   .hint{position:relative;max-width:680px;font-size:12px;color:var(--sub);margin-top:10px}
-  .drop.compact{min-height:0;padding:13px 18px;flex-direction:row;justify-content:flex-start;gap:11px;text-align:left}
+  .drop.compact{position:absolute;top:28px;right:14px;z-index:7;width:auto;min-height:44px;padding:8px 12px;
+    flex-direction:row;justify-content:flex-start;gap:9px;text-align:left;border-style:solid;border-color:rgba(170,174,224,.85);
+    background:rgba(255,255,255,.94);box-shadow:0 8px 24px rgba(37,42,71,.16);backdrop-filter:blur(12px)}
+  .drop.compact::before{display:none}
   .drop.compact .drop-icon{width:40px;height:40px;margin:0;border-radius:12px}
   .drop.compact .drop-icon svg{width:21px;height:21px}
   .drop.compact .drop-title{font-size:14px}
-  .drop.compact .drop-copy{margin:0 0 0 auto;font-size:12px}
+  .drop.compact .drop-copy{display:none}
   .drop.compact .drop-badges,.drop.compact .hint{display:none}
   #progressWrap{display:none;margin:14px 0;padding:14px 16px;border:1px solid #dedff8;border-radius:14px;background:var(--accent2)}
   #progressBar{height:8px;background:#d9dcf6;border-radius:999px;overflow:hidden}
   #progressBar>div{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#7775e8);border-radius:inherit;transition:width .2s}
   #progressText{font-size:13px;color:#4e5380;margin-top:7px;font-weight:650}
   #canvasArea{position:relative}
-  #canvasWrap{overflow:auto;border:1px solid var(--line);border-radius:18px;margin-top:14px;padding:10px;max-height:75vh;display:none;background:#eaedf3;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)}
+  #canvasWrap{overflow-x:auto;overflow-y:hidden;border:1px solid var(--line);border-radius:18px;margin-top:14px;padding:10px;display:none;background:#eaedf3;box-shadow:inset 0 0 0 1px rgba(255,255,255,.7)}
   #imgCanvas{display:block;cursor:pointer;max-width:none;touch-action:none;margin:0 auto}
   #canvasWrap.viewmode #imgCanvas{cursor:grab}
   #canvasWrap.viewmode #imgCanvas:active{cursor:grabbing}
@@ -204,9 +207,8 @@
     .drop{min-height:190px;padding:23px 14px}
     .drop-copy{font-size:13px}
     .drop .hint{font-size:11px}
-    .drop.compact{padding:11px 12px}
-    .drop.compact .drop-copy{display:none}
-    #canvasWrap{max-height:60vh;max-height:60svh;margin-top:10px;padding:6px;border-radius:15px}
+    .drop.compact{top:18px;right:8px;padding:7px 10px}
+    #canvasWrap{margin-top:10px;padding:6px;border-radius:15px}
     #zoomBar{width:100%;gap:6px;margin-top:10px}
     #zoomBar .zoom-label{width:100%}
     #zoomBar .btn{padding:8px 10px;font-size:13px;min-height:40px;flex:1}
@@ -249,9 +251,6 @@
     select:hover,.btn:hover,.stepper button:hover{border-color:#adb4c6}
     .btn.primary:hover{background:var(--accent-strong);border-color:var(--accent-strong)}
     .drop:hover{border-color:var(--accent);box-shadow:0 10px 28px rgba(86,84,212,.1);transform:translateY(-1px)}
-  }
-  @media(max-height:600px) and (any-pointer:coarse){
-    #canvasWrap{max-height:68vh;max-height:68svh}
   }
   @media(prefers-reduced-motion:reduce){
     *,*::before,*::after{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}
@@ -890,6 +889,14 @@ window.addEventListener('paste',e=>{
   }
 });
 
+function dockUploadToPreview(){
+  const area=document.getElementById('canvasArea');
+  if(drop.parentElement!==area)area.prepend(drop);
+  drop.classList.add('compact');
+  document.getElementById('dropTitle').textContent='更換譜面';
+  drop.setAttribute('aria-label','更換圖片或 PDF 譜面');
+}
+
 function loadFile(file){
   if(file.type==='application/pdf'||/\.pdf$/i.test(file.name||'')){loadPdf(file);return;}
   const url=URL.createObjectURL(file);
@@ -943,9 +950,7 @@ async function runOCR(){
     wrap.style.display='none';
     document.getElementById('imgControls').classList.remove('hide');
     document.getElementById('imgTools').classList.remove('hide');
-    drop.classList.add('compact');
-    document.getElementById('dropTitle').textContent='更換譜面';
-    drop.setAttribute('aria-label','更換圖片或 PDF 譜面');
+    dockUploadToPreview();
     canvasWrap.style.display='block';
     document.getElementById('zoomBar').style.display='flex';
     document.getElementById('pageNav').style.display=pages.length>1?'flex':'none';
@@ -1242,9 +1247,8 @@ let viewZoom=1, zoomMode='fitW';   // fitW=符合寬度 / fitP=符合整頁 / fr
 function wrapBox(){
   const cs=getComputedStyle(canvasWrap);
   const w=canvasWrap.clientWidth-parseFloat(cs.paddingLeft||0)-parseFloat(cs.paddingRight||0)-2;
-  // 可視高度由 CSS max-height 決定（桌機 75vh、手機 60svh），再以視窗高度為上限保險
-  const mh=parseFloat(cs.maxHeight);
-  const h=(isFinite(mh)&&mh>0?Math.min(mh,window.innerHeight):window.innerHeight*0.75)-2;
+  // 「符合整頁」仍以視窗高度為縮放基準，但容器本身不限制高度，避免產生第二支垂直捲軸。
+  const h=window.innerHeight*0.75-2;
   return {w:Math.max(50,w),h:Math.max(50,h)};
 }
 function fitZoom(mode){
@@ -1271,7 +1275,7 @@ function setZoom(z,anchor){
   if(before){ // 以游標位置為錨點，縮放後維持同一點在畫面上不動
     const k=viewZoom/old;
     canvasWrap.scrollLeft=(canvasWrap.scrollLeft+before.x)*k-before.x;
-    canvasWrap.scrollTop=(canvasWrap.scrollTop+before.y)*k-before.y;
+    window.scrollBy(0,before.y*(k-1));
   }
 }
 const zoomStep=d=>setZoom(viewZoom*(d>0?1.25:0.8));
@@ -1346,13 +1350,10 @@ function pinchInfo(){
   const a=[...ptrs.values()];
   return {x:(a[0].x+a[1].x)/2,y:(a[0].y+a[1].y)/2,d:Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y)};
 }
-// 捲動譜面容器；容器已到邊界時，剩下的量交給頁面捲動（否則手指會「卡住」）
+// 水平方向留在譜面容器；垂直方向一律交給頁面，避免巢狀垂直捲動。
 function panBy(dx,dy){
-  const sy=canvasWrap.scrollTop;
   canvasWrap.scrollLeft+=dx;
-  canvasWrap.scrollTop=sy+dy;
-  const rest=dy-(canvasWrap.scrollTop-sy);
-  if(rest)window.scrollBy(0,rest);
+  if(dy)window.scrollBy(0,dy);
 }
 let dragSt=null; // {hit,x0,y0,orig,moved,touch}
 function abortDrag(){ // 第二指落下時放棄標註拖曳，並還原已經被拖動的框

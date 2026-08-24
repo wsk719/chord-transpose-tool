@@ -1,5 +1,10 @@
 # 專案知識庫
 
+## 2026-08-24 — 上傳入口與譜面預覽整合、取消巢狀垂直捲動
+- 圖片／PDF 辨識完成後，`dockUploadToPreview()` 會把原本的 `#drop` 移入 `#canvasArea`，改成預覽右上角的小型「更換譜面」按鈕；沿用同一個 file input 與 drop/paste/keyboard handler，未載入前仍是完整上傳區。
+- `#canvasWrap` 不再設 `max-height`，採 `overflow-x:auto;overflow-y:hidden`：手動放大仍可水平捲動，長譜面則讓容器完整展開，只由網頁本身提供垂直捲軸。
+- 觸控 `panBy()` 的水平位移仍更新 `canvasWrap.scrollLeft`，垂直位移一律交給 `window.scrollBy()`；縮放錨點的垂直補償也同步交給頁面。測試需同時斷言預覽無垂直 overflow、整頁可捲動，以及桌機／手機更換入口都位於 `#canvasArea` 內。
+
 ## 2026-08-24 — 反覆結尾延長線下的和弦窄帶漏抓
 - 《無價至寶》完整 PDF 第二頁最末列雖已由 PSM 11 的 3 個多字元錨點建立補掃窄帶，PSM 7 實際輸出卻是 `pm? / Gc / ||2-Dm7 / G7 / Cc`；舊 `scanChordBands()` 又把補掃結果送回一般 `detectFrom()`，沒有使用已存在的 `sparseCorrect()`，所以第一結尾 `Dm7 / G` 與末尾 `C` 被歌詞防誤判門檻擋掉。
 - 修正只在補掃字詞含反覆結尾標誌（如 `||2-Dm7`）時啟用積極窄帶解析；其他一般和弦列仍走原本保守流程。窄帶新增 `pm?→Dm7`、結尾編號前綴剝除，並沿用既有 `Gc→G`，單字母低信心候選仍須至少 20 分。

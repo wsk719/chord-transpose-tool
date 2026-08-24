@@ -22,7 +22,8 @@ function bootAndRun(opts) {
     addListener(){}, removeListener(){}, addEventListener(){}, removeEventListener(){} });
   Object.defineProperty(w, 'innerWidth',  { value: opts.vw, configurable: true });
   Object.defineProperty(w, 'innerHeight', { value: opts.vh, configurable: true });
-  w.scrollBy = () => {};
+  w.__pageScrollY = 0;
+  w.scrollBy = (_x, y) => { w.__pageScrollY += y; };
   w.prompt = opts.prompt || (() => null);
   w.alert = () => {};
   const ctx2d = new Proxy({}, { get: (t, k) =>
@@ -92,7 +93,8 @@ console.log('— 觸控裝置（390×844，模擬 iPhone）—');
   ok(w.eval("gest&&gest.type") === 'pan', '單指按下應進入 pan');
   canvas.onpointermove(PD(1, 200, 300));
   canvas.onpointermove(PD(1, 180, 200));
-  ok(wrap.scrollTop === 200, `向上拖 200px 應捲動 200，實得 ${wrap.scrollTop}`);
+  ok(wrap.scrollTop === 0, `垂直拖曳不應捲動譜面內層，實得 ${wrap.scrollTop}`);
+  ok(w.__pageScrollY === 200, `向上拖 200px 應改由整頁捲動 200，實得 ${w.__pageScrollY}`);
   ok(wrap.scrollLeft === 20, `向左拖 20px 應橫捲 20，實得 ${wrap.scrollLeft}`);
   canvas.onpointerup(PD(1, 180, 200));
   ok(w.eval('gest') === null, 'pan 結束後 gest 應清空');
@@ -216,6 +218,14 @@ console.log('— 頁籤語意與鍵盤操作 —');
   ok(imgTab.getAttribute('aria-selected') === 'true' && d.activeElement === imgTab, '方向鍵應切換並聚焦相鄰頁籤');
   const drop = d.getElementById('drop');
   ok(drop.getAttribute('role') === 'button' && drop.tabIndex === 0, '上傳區應可用鍵盤聚焦');
+  const canDockUpload = w.eval("typeof dockUploadToPreview === 'function'");
+  ok(canDockUpload, '載入譜面後應有把更換入口整合進預覽區的行為');
+  if (canDockUpload) {
+    w.eval('dockUploadToPreview()');
+    ok(drop.parentElement === d.getElementById('canvasArea'), '更換譜面入口應移入實際譜面預覽區');
+    ok(drop.classList.contains('compact') && drop.getAttribute('aria-label') === '更換圖片或 PDF 譜面',
+       '整合後的入口應呈現精簡的更換譜面按鈕語意');
+  }
 }
 
 // ============================================================
@@ -235,6 +245,14 @@ console.log('— CSS 檢查 —');
   ok(/button,\.tab,\.drop\{touch-action:manipulation\}/.test(html), '一般互動元件應使用 manipulation 觸控策略');
   ok(/prefers-reduced-motion:reduce/.test(html), '應尊重減少動態效果偏好');
   ok(!/style="display:none"/.test(html.split('<script>')[0]), '版面切換應改用 class 而非 inline display');
+  const canvasRule = /#canvasWrap\{([^}]*)\}/.exec(html);
+  ok(canvasRule && /overflow-x:auto/.test(canvasRule[1]) && /overflow-y:hidden/.test(canvasRule[1]),
+     '譜面預覽只保留必要的水平捲動，不應有內層垂直捲軸');
+  ok(canvasRule && !/max-height/.test(canvasRule[1]), '譜面預覽高度應隨完整譜面展開');
+  ok(!/#canvasWrap\{[^}]*max-height/.test(mq), '手機版也不應重新限制譜面預覽高度');
+  const compactRule = /\.drop\.compact\{([^}]*)\}/.exec(html);
+  ok(compactRule && /position:absolute/.test(compactRule[1]), '更換譜面入口應浮在預覽區內，不另占一整列');
+  ok(/\.drop\.compact \.drop-copy[^}]*display:none/.test(html), '精簡更換入口不應保留冗長上傳說明');
 }
 
 console.log(`\n${fails ? '❌' : '✅'} 通過 ${passes} 項，失敗 ${fails} 項`);
