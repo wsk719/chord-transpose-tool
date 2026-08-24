@@ -40,8 +40,13 @@ const api = new Function(`${constants}
   ${functionSource('isImplausiblyWideSingleChord')}
   ${functionSource('findSparseChordBands')}
   ${functionSource('sparseBandCrop')}
+  ${functionSource('findStaffSystems')}
+  ${functionSource('findHybridNumberedStaffSystems')}
+  ${functionSource('staffChordBandCrop')}
+  ${functionSource('isDetInStaffChordBand')}
+  ${functionSource('staffBandCorrect')}
   ${functionSource('sortDetsReadingOrder')}
-  return {correctToken,leadingQuoteChord,repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sparseBandCrop,sortDetsReadingOrder};`)();
+  return {correctToken,leadingQuoteChord,repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sparseBandCrop,findStaffSystems,findHybridNumberedStaffSystems,staffChordBandCrop,isDetInStaffChordBand,staffBandCorrect,sortDetsReadingOrder};`)();
 
 let passes = 0, fails = 0;
 function ok(cond, message) {
@@ -114,6 +119,47 @@ ok(verticalLineCrop.top === 616 && verticalLineCrop.bottom === 670,
 ok(api.sparseBandCrop({cy:12,h:20}, 25).top === 0 && api.sparseBandCrop({cy:20,h:20}, 25).bottom === 25,
   '和弦窄帶裁切仍應限制在影像上下邊界內');
 
+const ocrWord = (text, cy, x, h=30) => ({text, confidence:80,
+  bbox:{x0:x,y0:cy-h/2,x1:x+Math.max(18,text.length*16),y1:cy+h/2}});
+
+const dens=new Array(1500).fill(0),run=new Array(1500).fill(0);
+for(const top of [632,995,1358])for(const off of [0,12,23,35,47])for(const y of [top+off,top+off+1]){
+  dens[y]=0.83;run[y]=0.83;
+}
+const staffSystems=api.findStaffSystems(dens,run);
+ok(staffSystems.length===3, `應從 15 條譜線建立 3 個五線譜系統，實得 ${staffSystems.length}`);
+ok(Math.abs(staffSystems[0].top-632.5)<0.1&&Math.abs(staffSystems[0].space-12)<0.6,
+  `第一系統譜線位置／間距錯誤：${JSON.stringify(staffSystems[0])}`);
+
+const denseLine=(cy,n=10)=>({words:Array.from({length:n},(_,i)=>ocrWord(i%3?'oo':'|',cy,i*90,28))});
+const scale=2600/1654;
+const hybridData={lines:[
+  denseLine(910),denseLine(940),
+  denseLine(1470),denseLine(1510),
+  denseLine(2025),denseLine(2060),
+]};
+const hybridSystems=api.findHybridNumberedStaffSystems(staffSystems,scale,hybridData);
+ok(hybridSystems.length===3, `每個譜系上方都有成對密集簡譜列，應辨識 3 個混合譜系，實得 ${hybridSystems.length}`);
+const normalChordData={lines:[denseLine(1390,4)]};
+ok(api.findHybridNumberedStaffSystems(staffSystems,scale,normalChordData).length===0,
+  '只有單一正常和弦列時不得啟用簡譜專用幾何規則');
+const staffCrop=api.staffChordBandCrop(staffSystems[1],3000,scale);
+ok(staffCrop.top>=1342&&staffCrop.top<=1344&&staffCrop.bottom>=1435&&staffCrop.bottom<=1437,
+  `第二系統和弦帶應包住 y=1390 並停在數字列前，實得 ${JSON.stringify(staffCrop)}`);
+ok(api.isDetInStaffChordBand({bbox:{x0:100,y0:875,x1:130,y1:900}},staffSystems),
+  '第二系統 y≈887 的真和弦框應位於幾何和弦帶');
+ok(!api.isDetInStaffChordBand({bbox:{x0:100,y0:935,x1:130,y1:960}},staffSystems),
+  '第二系統 y≈947 的簡譜假框不得位於幾何和弦帶');
+ok(api.staffBandCorrect('C—')?.str==='C', '混合譜系專用窄帶內，C 黏住延音線時應還原 C');
+ok(api.staffBandCorrect('C67')?.str==='C', '混合譜系專用窄帶內，C 黏住簡譜 6/7 時應還原 C');
+ok(api.staffBandCorrect('Cc')?.str==='C'&&api.staffBandCorrect('Co')?.str==='C'
+  &&api.staffBandCorrect('C_')?.str==='C'&&api.staffBandCorrect('c')?.str==='C',
+  '混合譜系專用窄帶應還原實圖的 Cc／Co／C_／c');
+ok(api.staffBandCorrect('¢')?.str==='G', '混合譜系專用窄帶內，特殊字形 G 被讀成 ¢ 時應還原 G');
+ok(api.staffBandCorrect('G')?.str==='G'&&api.staffBandCorrect('G7')?.str==='G7',
+  '混合譜系專用修正不得改動已正確的 G／G7');
+ok(api.correctToken('C67')?.str==='C67', '一般和弦解析仍須保持原行為，不套用混合譜系去尾規則');
+
 const expected = ['G','C','G/B','Am7','C/G','Fmaj7','G','G/F','E7','E7/G#','Am7','C/G','F','C/E','Dm7','G','Dm7','G7','C'];
 const points = expected.map((text, i) => {
   const row = i < 6 ? 0 : i < 14 ? 1 : 2;
@@ -127,6 +173,8 @@ ok(JSON.stringify(ordered) === JSON.stringify(expected),
 
 ok(!src.includes('[ocr-debug:')&&!src.includes('__ocrDebug')&&!src.includes('ocrDebugData'),
   '正式原始碼不應殘留 OCR 診斷輸出');
+ok(!src.includes('number-trace')&&!src.includes('number-band')&&!src.includes('number-glyph'),
+  '正式原始碼不應殘留本附件的臨時分行／字形診斷');
 
 console.log(`\n${fails ? '❌' : '✅'} OCR 測試通過 ${passes} 項，失敗 ${fails} 項`);
 process.exit(fails ? 1 : 0);

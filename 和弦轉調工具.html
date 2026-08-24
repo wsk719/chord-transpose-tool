@@ -681,6 +681,78 @@ function sparseBandCrop(b,maxHeight){
   };
 }
 
+// 從原圖的長水平線取得五線譜系統；只使用與 isStaff 相同的嚴格長線條件。
+function findStaffSystems(dens,run){
+  const lines=[];
+  let start=-1;
+  for(let y=0;y<=dens.length;y++){
+    const on=y<dens.length&&dens[y]>0.25
+      &&(run[y]>0.5||(run[y]>0.3&&run[y]>=dens[y]*0.75));
+    if(on&&start<0)start=y;
+    else if(!on&&start>=0){lines.push((start+y-1)/2);start=-1;}
+  }
+  const systems=[];
+  for(let i=0;i+4<lines.length;){
+    const five=lines.slice(i,i+5),gaps=five.slice(1).map((y,j)=>y-five[j]);
+    const sorted=[...gaps].sort((a,b)=>a-b),space=sorted[Math.floor(sorted.length/2)];
+    const tol=Math.max(1.5,space*0.25);
+    if(space>=3&&gaps.every(g=>Math.abs(g-space)<=tol)){
+      systems.push({top:five[0],space:gaps.reduce((a,b)=>a+b,0)/gaps.length});
+      i+=5;
+    }else i++;
+  }
+  return systems;
+}
+
+// 簡譜的上／下加點與節拍底線會被 PSM 3 切成兩條相鄰且密集的文字行。
+// 一般和弦列即使含 G7/Cmaj7 也只有一條；因此必須看見成對密集行才啟用專用路徑。
+function findHybridNumberedStaffSystems(systems,scale,...datasets){
+  const out=[];
+  for(const s of systems){
+    const low=(s.top-s.space*6.5)*scale,high=(s.top-s.space*1.5)*scale;
+    const minGap=s.space*scale*0.5,maxGap=s.space*scale*3.5;
+    let found=false;
+    for(const data of datasets){
+      const rows=[];
+      for(const line of (data?.lines||[])){
+        const words=(line.words||[]).filter(w=>/\S/.test(w.text||''));
+        if(words.length<6)continue;
+        const centers=words.map(w=>(w.bbox.y0+w.bbox.y1)/2).sort((a,b)=>a-b);
+        const cy=centers[Math.floor(centers.length/2)];
+        if(cy>=low&&cy<=high&&!rows.some(y=>Math.abs(y-cy)<minGap*0.6))rows.push(cy);
+      }
+      rows.sort((a,b)=>a-b);
+      if(rows.some((y,i)=>rows.slice(i+1).some(y2=>y2-y>=minGap&&y2-y<=maxGap))){found=true;break;}
+    }
+    if(found)out.push(s);
+  }
+  return out;
+}
+
+function staffChordBandCrop(s,maxHeight,scale=1){
+  return {
+    top:Math.max(0,Math.floor((s.top-s.space*12)*scale)),
+    bottom:Math.min(maxHeight,Math.ceil((s.top-s.space*7)*scale))
+  };
+}
+
+function isDetInStaffChordBand(det,systems){
+  const cy=(det.bbox.y0+det.bbox.y1)/2;
+  return systems.some(s=>{
+    const b=staffChordBandCrop(s,Infinity);
+    return cy>=b.top&&cy<=b.bottom;
+  });
+}
+
+// 只供「已確認的混合譜系＋幾何和弦窄帶」使用；不改一般和弦解析契約。
+function staffBandCorrect(raw){
+  const s=norm(raw).trim().replace(/[),\].,:;!]+$/,'');
+  if(s==='¢')return{str:'G',lead:0,split:null};
+  const glued=s.match(/^([A-G][#b]?)(?:67|[–—_]+)$/);
+  if(glued)return{str:glued[1],lead:0,split:null};
+  return sparseCorrect(raw);
+}
+
 // 第三輪稀疏掃描：只在既有和弦的水平列高度帶內、不與現有偵測重疊處撿漏
 function sparseRescue(dets,data,scale){
   if(!dets.length)return [];
@@ -1192,13 +1264,43 @@ async function ocrOne(worker,img){
       }
       return out;
     };
+    const scanStaffChordBands=async(pre,systems)=>{
+      let out=[];
+      if(!systems.length)return out;
+      await worker.setParameters({tessedit_pageseg_mode:'6'});
+      for(const s of systems){
+        const {top,bottom}=staffChordBandCrop(s,pre.height,scale);
+        if(bottom<=top)continue;
+        const strip=document.createElement('canvas');strip.width=pre.width;strip.height=bottom-top;
+        strip.getContext('2d').drawImage(pre,0,top,pre.width,bottom-top,0,0,pre.width,bottom-top);
+        const {data:bandData}=await worker.recognize(strip);
+        for(const line of (bandData.lines||[]))for(const w of (line.words||[])){
+          w.bbox.y0+=top;w.bbox.y1+=top;
+        }
+        const bandDets=[];
+        for(const line of (bandData.lines||[]))for(const w of (line.words||[])){
+          const r=staffBandCorrect(w.text);
+          if(r&&(r.str.length>1||w.confidence>=20))bandDets.push(...makeDets(r,w));
+        }
+        out=mergeDets(out,bandDets);
+      }
+      return out;
+    };
     // 兩輪辨識（灰階與原色互補），聯集合併
     const preFiltered=buildPre(true),preColor=buildPre(false);
     const {data:dataA}=await worker.recognize(preFiltered);
     const detsA=detectFrom(dataA);
     const {data:dataB}=await worker.recognize(preColor);
     const detsB=detectFrom(dataB);
+    const staffSystems=isStaff?findStaffSystems(dens0,run0):[];
+    const hybridStaffSystems=isStaff?findHybridNumberedStaffSystems(staffSystems,scale,dataA,dataB):[];
     let merged=mergeDets(detsA,detsB);
+    let hybridDets=[];
+    if(hybridStaffSystems.length){
+      hybridDets=await scanStaffChordBands(preFiltered,hybridStaffSystems);
+      merged=mergeDets(merged,hybridDets);
+      await worker.setParameters({tessedit_pageseg_mode:'3'});
+    }
     // 五線譜再跑第三輪稀疏掃描，在和弦列高度帶內撿漏
     if(isStaff&&merged.length){
       await worker.setParameters({tessedit_pageseg_mode:'11'});
@@ -1207,6 +1309,10 @@ async function ocrOne(worker,img){
       merged=merged.concat(sparseRescue(merged,dataC,scale));
       await worker.setParameters({tessedit_pageseg_mode:'3'});
     }
+    // 全頁每個譜系都確認為「和弦＋簡譜＋五線譜」時，只採幾何和弦帶內結果；
+    // 這同時排除數字與下方多段中文歌詞，但不套用到一般或混合版面。
+    if(staffSystems.length>=2&&hybridStaffSystems.length===staffSystems.length)
+      merged=hybridDets.filter(d=>isDetInStaffChordBand(d,hybridStaffSystems));
     return sortDetsReadingOrder(merged);
   }catch(err){
     console.error('ocrOne:',err);
