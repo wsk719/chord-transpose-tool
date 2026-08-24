@@ -525,6 +525,9 @@ function correctCore(t0,allowLeadStrip=true){
 // 回傳 {str, lead, split}（lead=去掉的前導字元數；split=可能是兩個和弦的拆法）或 null
 function correctToken(raw,allowLeadStrip=true){
   const s=norm(raw).trim();
+  const withoutOtherTail=s.replace(/[\],.:;!_]+$/,'');
+  // 只有完整的 (A) 才把右括號視為和弦標點；A) 常是中文筆畫被 OCR 切成的假候選。
+  if(/\)$/.test(withoutOtherTail)&&!withoutOtherTail.includes('(')&&parseChord(withoutOtherTail.slice(0,-1)))return null;
   const t0=s.replace(/[),\].,:;!_]+$/,'');
   // 結尾的 : 可能是升記號 #（ETIG: → E7/G#）：只在得到「斜線+#」解讀時優先採用
   if(/^[A-G].*:$/.test(s)){
@@ -539,6 +542,16 @@ function correctToken(raw,allowLeadStrip=true){
   }
   if(/^[A-G]/.test(t0)&&/y$/.test(t0)){ r=correctCore(t0.slice(0,-1)+'7',allowLeadStrip); if(r)return r; }
   return null;
+}
+
+// 前導撇號常是小節線上緣被 OCR 誤讀；永遠只送入「同行已有至少 3 個和弦」的低信心救援，
+// 不放進一般解析，避免零星英文／中文碎片直接成為單字母和弦。
+function leadingQuoteChord(raw,allowLeadStrip=true){
+  const s=norm(raw).trim().replace(/[),\].,:;!_]+$/,'');
+  const m=s.match(/^[’'`´](.+)$/);
+  if(!m)return null;
+  const r=correctCore(m[1],allowLeadStrip);
+  return r?{...r,lead:r.lead+1,noisyLead:true}:null;
 }
 
 // ♯ 記號被 OCR 讀成別的字母（實測：F♯m→Fem、D/F♯→D/Fi、A/C♯→AICE / AICK / Alct）。
@@ -1105,9 +1118,13 @@ async function ocrOne(worker,img){
             const t=norm(w.text).trim().replace(/[),\].,:;!]+$/,'');
             if(t==='8'&&w.bbox.x0>firstX+5) fails.push({r:{str:'Bb',lead:0,split:null},w});
             else{
-              const rs=sharpenToken(w.text,!isStaff);   // ♯ 誤讀候選，稍後只在和弦行才啟用
-              if(rs) sharp.push({r:rs,w});
-              if(/[A-Za-z]/.test(w.text)&&!isNeutralWord(w.text)) susp.push(w.text);
+              const rq=leadingQuoteChord(w.text,!isStaff);
+              if(rq)fails.push({r:rq,w});
+              else{
+                const rs=sharpenToken(w.text,!isStaff);   // ♯ 誤讀候選，稍後只在和弦行才啟用
+                if(rs) sharp.push({r:rs,w});
+                if(/[A-Za-z]/.test(w.text)&&!isNeutralWord(w.text)) susp.push(w.text);
+              }
             }
           }
         }
@@ -1123,7 +1140,9 @@ async function ocrOne(worker,img){
           const lh=lineAcc.map(d=>d.h).sort((a,b)=>a-b)[Math.floor(lineAcc.length/2)];
           for(const f of list){
             const h=(f.w.bbox.y1-f.w.bbox.y0)/scale;
-            if(h<=lh*1.6) lineAcc.push(...makeDets(f.r,f.w));
+            // 前導撇號本身像一根小節線，會把整個 OCR 字框拉高；仍只限已確認的 3 和弦同行，
+            // 並把容許值收在實測 1.68 倍稍上方，其他低信心候選維持原本 1.6 倍門檻。
+            if(h<=lh*(f.r.noisyLead?1.75:1.6)) lineAcc.push(...makeDets(f.r,f.w));
           }
         };
         rescue(fails,3);

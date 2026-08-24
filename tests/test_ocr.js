@@ -29,6 +29,7 @@ const api = new Function(`${constants}
   ${functionSource('plausibleBass')}
   ${functionSource('correctCore')}
   ${functionSource('correctToken')}
+  ${functionSource('leadingQuoteChord')}
   ${sharpLookalike}
   ${functionSource('sharpenToken')}
   ${functionSource('repeatBarCorrect')}
@@ -39,7 +40,7 @@ const api = new Function(`${constants}
   ${functionSource('isImplausiblyWideSingleChord')}
   ${functionSource('findSparseChordBands')}
   ${functionSource('sortDetsReadingOrder')}
-  return {repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
+  return {correctToken,leadingQuoteChord,repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
 
 let passes = 0, fails = 0;
 function ok(cond, message) {
@@ -51,6 +52,12 @@ const pdfScale = api.pdfRenderScale(566.46);
 ok(pdfScale > 4.5 && pdfScale < 4.7,
   `裁切 PDF 應直接渲染到約 2600px（scale≈4.59），實得 ${pdfScale.toFixed(2)}`);
 ok(api.pdfRenderScale(2000) === 1.5, '大型 PDF 頁面應維持最小 1.5 倍渲染');
+
+ok(api.correctToken('A)') === null, '沒有左括號的 A) 不應被剝成標題區假和弦 A');
+ok(api.correctToken('(A)')?.str === 'A', '成對括號內的真正和弦 (A) 仍應保留');
+ok(api.leadingQuoteChord("'F")?.str === 'F' && api.leadingQuoteChord("'F")?.lead === 1 && api.leadingQuoteChord("'F")?.noisyLead,
+  '前導撇號黏住的 F 應進入既有低信心同行救援');
+ok(api.correctToken("'F") === null, '前導撇號和弦不應繞過同行門檻直接進入一般解析');
 
 ok(api.sparseCorrect('pm?')?.str === 'Dm7', '可信窄帶內 pm? 應還原為 Dm7');
 ok(api.sparseCorrect('Gc')?.str === 'G', '可信窄帶內 Gc 應還原為 G');
@@ -102,7 +109,8 @@ const ordered = api.sortDetsReadingOrder(shuffled).map(d=>d.text);
 ok(JSON.stringify(ordered) === JSON.stringify(expected),
   `和弦應按水平帶與 x 座標排序，實得 ${ordered.join(' ')}`);
 
-ok(!src.includes('[ocr-debug:'), '正式原始碼不應殘留 OCR 診斷輸出');
+ok(!src.includes('[ocr-debug:')&&!src.includes('__ocrDebug')&&!src.includes('ocrDebugData'),
+  '正式原始碼不應殘留 OCR 診斷輸出');
 
 console.log(`\n${fails ? '❌' : '✅'} OCR 測試通過 ${passes} 項，失敗 ${fails} 項`);
 process.exit(fails ? 1 : 0);
