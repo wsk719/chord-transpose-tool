@@ -70,12 +70,19 @@ ok(api.repeatEndingChordTail('G/B') === null, '一般和弦列不應啟動反覆
 
 const repeatRowA = ['IC','TAm','IE','Gl','a'];
 const repeatRowB = ['IC','fAm','1K','1G','a'];
+const repeatRowC = ['I:','F','C/E','|Am','Ke','a'];
 ok(api.isRepeatBarChordLine(repeatRowA), '灰階輪的小節線黏字應被辨識為反覆和弦列');
 ok(api.isRepeatBarChordLine(repeatRowB), '原色輪的小節線黏字應被辨識為反覆和弦列');
+ok(api.isRepeatBarChordLine(repeatRowC), '第二列即使 |G 被讀成 Ke，末尾 a 仍應作為 :|| 的結構證據');
 ok(repeatRowA.map(t=>api.repeatBarCorrect(t)?.str).filter(Boolean).join(' ') === 'C Am F',
   '灰階輪應還原 C Am F，並留給另一輪補回 G');
 ok(repeatRowB.map(t=>api.repeatBarCorrect(t)?.str).filter(Boolean).join(' ') === 'C Am F G',
   '原色輪應完整還原 C Am F G，且不能把結尾 a 當 A');
+ok(repeatRowC.map(t=>api.repeatBarCorrect(t)?.str).filter(Boolean).join(' ') === 'F C/E Am',
+  '第二列本輪只保留可信和弦，Ke 交由另一輪補 G，末尾 a 不得成為 A');
+ok(api.correctToken('a')?.str === 'A', '測試前提：一般解析仍允許小寫 a 表示 A 和弦');
+ok(/if\s*\(repeatLine\)\s*lineAcc\s*=\s*repeatDets\s*;/.test(src),
+  '確認為反覆列後，最終候選必須只採反覆列修正，不能混回一般解析產生的假 A');
 ok(!api.isRepeatBarChordLine(['The','Lord','is','good']), '一般英文歌詞行不得啟用反覆列積極修正');
 ok(api.repeatBarCorrect('Team') === null, '一般 T 開頭單字不得剝成和弦');
 
