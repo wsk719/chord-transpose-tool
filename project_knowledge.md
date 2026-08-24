@@ -1,5 +1,10 @@
 # 專案知識庫
 
+## 2026-08-24 — 文字譜反覆列的小節線黏字造成整列被防誤判淘汰
+- 《在神沒有難成的事》右下 `||: C | Am | F | G :||` 並未被裁切；兩輪 Tesseract 實際輸出為 `IC / TAm / IE / Gl / a` 與 `IC / fAm / 1K / 1G / a`。一般解析只剩少量候選，`detectFrom()` 因可疑英文數量過多而把整列拒絕。
+- `repeatBarCorrect()` 只在同行至少有 3 個小節線黏字標記且可還原至少 3 個和弦時啟用，處理 `TAm/fAm→Am` 與附件特有的 `IE/1K→F`；正常大寫和弦仍可併入，但小寫結尾雜訊 `a` 不會成為假 `A`。
+- 真實 PDF.js + Tesseract.js 端到端驗證已在第一列標出 `C / Am / F / G`；純函式測試同時固定兩輪原始誤讀與一般英文歌詞不得觸發積極修正。
+
 ## 2026-08-24 — 上傳入口與譜面預覽整合、取消巢狀垂直捲動
 - 圖片／PDF 辨識完成後，`dockUploadToPreview()` 會把原本的 `#drop` 移入 `#canvasArea`，改成預覽右上角的小型「更換譜面」按鈕；沿用同一個 file input 與 drop/paste/keyboard handler，未載入前仍是完整上傳區。
 - `#canvasWrap` 不再設 `max-height`，採 `overflow-x:auto;overflow-y:hidden`：手動放大仍可水平捲動，長譜面則讓容器完整展開，只由網頁本身提供垂直捲軸。

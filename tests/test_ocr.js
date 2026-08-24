@@ -31,13 +31,15 @@ const api = new Function(`${constants}
   ${functionSource('correctToken')}
   ${sharpLookalike}
   ${functionSource('sharpenToken')}
+  ${functionSource('repeatBarCorrect')}
+  ${functionSource('isRepeatBarChordLine')}
   ${functionSource('repeatEndingChordTail')}
   ${functionSource('sparseCorrect')}
   ${functionSource('pdfRenderScale')}
   ${functionSource('isImplausiblyWideSingleChord')}
   ${functionSource('findSparseChordBands')}
   ${functionSource('sortDetsReadingOrder')}
-  return {repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
+  return {repeatBarCorrect,isRepeatBarChordLine,repeatEndingChordTail,sparseCorrect,pdfRenderScale,isImplausiblyWideSingleChord,findSparseChordBands,sortDetsReadingOrder};`)();
 
 let passes = 0, fails = 0;
 function ok(cond, message) {
@@ -55,6 +57,17 @@ ok(api.sparseCorrect('Gc')?.str === 'G', '可信窄帶內 Gc 應還原為 G');
 ok(api.sparseCorrect('||2-Dm7')?.str === 'Dm7', '可信窄帶內黏住第二結尾線的 ||2-Dm7 應還原為 Dm7');
 ok(api.repeatEndingChordTail('||2-Dm7')?.tail === 'Dm7', '應辨識反覆結尾編號黏和弦標誌');
 ok(api.repeatEndingChordTail('G/B') === null, '一般和弦列不應啟動反覆結尾積極解析');
+
+const repeatRowA = ['IC','TAm','IE','Gl','a'];
+const repeatRowB = ['IC','fAm','1K','1G','a'];
+ok(api.isRepeatBarChordLine(repeatRowA), '灰階輪的小節線黏字應被辨識為反覆和弦列');
+ok(api.isRepeatBarChordLine(repeatRowB), '原色輪的小節線黏字應被辨識為反覆和弦列');
+ok(repeatRowA.map(t=>api.repeatBarCorrect(t)?.str).filter(Boolean).join(' ') === 'C Am F',
+  '灰階輪應還原 C Am F，並留給另一輪補回 G');
+ok(repeatRowB.map(t=>api.repeatBarCorrect(t)?.str).filter(Boolean).join(' ') === 'C Am F G',
+  '原色輪應完整還原 C Am F G，且不能把結尾 a 當 A');
+ok(!api.isRepeatBarChordLine(['The','Lord','is','good']), '一般英文歌詞行不得啟用反覆列積極修正');
+ok(api.repeatBarCorrect('Team') === null, '一般 T 開頭單字不得剝成和弦');
 
 ok(api.isImplausiblyWideSingleChord('A', {x0: 0, y0: 0, x1: 104, y1: 25}),
   '寬度達字高四倍的假 A 應拒絕');

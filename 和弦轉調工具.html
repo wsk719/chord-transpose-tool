@@ -548,6 +548,29 @@ function sharpenToken(raw,allowLeadStrip=true){
   return correctCore(t,allowLeadStrip);
 }
 
+// 反覆段落的直小節線常與和弦黏在一起，並被讀成 I/1/T/f；只有同一行有至少
+// 3 個小節線標記且能還原至少 3 個和弦時才啟用，避免把一般歌詞積極改成和弦。
+function repeatBarCorrect(raw){
+  const s=norm(raw).trim().replace(/[),\].,:;!_]+$/,'');
+  if(!s)return null;
+  // 本附件的「| F」在兩輪 OCR 分別成為 IE / 1K；限強反覆列內才採用此對應。
+  if(/^[I1][EK]$/.test(s))return{str:'F',lead:1,split:null};
+  let m=s.match(/^[Ttf]([A-G][#b]?(?:m|maj|min|dim|aug|sus|add|alt|omit|no|M|Δ|°|ø|\+|-|[0-9()#b.])*(?:\/[A-G][#b]?)?)$/);
+  if(m){const r=correctToken(m[1],false);if(r)return{...r,lead:r.lead+1};}
+  if(/^[|Il1]/.test(s))return correctToken(s,true);
+  // 同一反覆列內仍要收沒有黏到小節線的正常大寫和弦；小寫 a 等歌詞雜訊不收。
+  return /^[A-G]/.test(s)?correctToken(s,false):null;
+}
+function isRepeatBarChordLine(tokens){
+  let markers=0,chords=0;
+  for(const raw of tokens){
+    const s=norm(raw).trim();
+    if(/^[|Il1]/.test(s)||/^[Ttf](?=[A-G])/.test(s))markers++;
+    if(repeatBarCorrect(raw))chords++;
+  }
+  return markers>=3&&chords>=3;
+}
+
 // 兩輪辨識結果的聯集合併（重疊的框保留資訊較完整者）
 function bboxOverlap(a,b){
   const x0=Math.max(a.bbox.x0,b.bbox.x0),x1=Math.min(a.bbox.x1,b.bbox.x1);
@@ -1059,9 +1082,14 @@ async function ocrOne(worker,img){
       const accepted=[],borderline=[];
       for(const line of (data.lines||[])){
         const cands=[],susp=[],fails=[],sharp=[];
+        const words=(line.words||[]).filter(w=>/\S/.test(w.text));
+        const repeatLine=isRepeatBarChordLine(words.map(w=>w.text));
+        const repeatDets=repeatLine?words.flatMap(w=>{
+          const r=repeatBarCorrect(w.text);return r?makeDets(r,w):[];
+        }):[];
         let firstX=1e9;
-        for(const w of (line.words||[])) if(/\S/.test(w.text)) firstX=Math.min(firstX,w.bbox.x0);
-        for(const w of (line.words||[])){
+        for(const w of words) firstX=Math.min(firstX,w.bbox.x0);
+        for(const w of words){
           const r=correctToken(w.text,!isStaff);
           if(r&&w.confidence>12) cands.push(...makeDets(r,w));
           else if(r) fails.push({r,w});
@@ -1092,6 +1120,7 @@ async function ocrOne(worker,img){
         };
         rescue(fails,3);
         rescue(sharp,2);
+        if(repeatLine)lineAcc=mergeDets(lineAcc,repeatDets);
         // 整行都是光桿單字母且很多個 → 多半是歌詞被誤讀成字母，整行拒絕
         if(lineAcc.length>=6&&lineAcc.every(d=>d.text.length===1)) lineAcc=[];
         accepted.push(...lineAcc);
