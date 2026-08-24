@@ -63,7 +63,9 @@ ok(api.correctToken("'F") === null, '前導撇號和弦不應繞過同行門檻�
 ok(api.sparseCorrect('pm?')?.str === 'Dm7', '可信窄帶內 pm? 應還原為 Dm7');
 ok(api.sparseCorrect('Gc')?.str === 'G', '可信窄帶內 Gc 應還原為 G');
 ok(api.sparseCorrect('||2-Dm7')?.str === 'Dm7', '可信窄帶內黏住第二結尾線的 ||2-Dm7 應還原為 Dm7');
+ok(api.sparseCorrect('[12.Dm7')?.str === 'Dm7', '窄帶縮短後的 [12.Dm7 應還原為第二結尾 Dm7');
 ok(api.repeatEndingChordTail('||2-Dm7')?.tail === 'Dm7', '應辨識反覆結尾編號黏和弦標誌');
+ok(api.repeatEndingChordTail('[12.Dm7')?.tail === 'Dm7', '應接受左方框線被讀成 [1 的反覆結尾形態');
 ok(api.repeatEndingChordTail('G/B') === null, '一般和弦列不應啟動反覆結尾積極解析');
 
 const repeatRowA = ['IC','TAm','IE','Gl','a'];
